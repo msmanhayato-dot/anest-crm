@@ -1,0 +1,1230 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>アネストCRM | 営業管理システム</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+  <style>
+    :root {
+      --primary: #3D5A9E;
+      --primary-light: #5571BD;
+      --primary-dark: #2D4280;
+      --success: #27AE60;
+      --warning: #F39C12;
+      --danger: #E74C3C;
+      --bg: #F0F2F5;
+      --sidebar-bg: #1E2D5A;
+      --card-bg: #FFFFFF;
+      --text-primary: #1A202C;
+      --text-secondary: #718096;
+      --border: #E2E8F0;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', 'Hiragino Sans', 'Yu Gothic', sans-serif;
+      background: var(--bg); color: var(--text-primary);
+      display: flex; height: 100vh; overflow: hidden;
+    }
+    #sidebar {
+      width: 220px; background: var(--sidebar-bg); color: #CBD5E0;
+      display: flex; flex-direction: column; flex-shrink: 0; overflow-y: auto;
+    }
+    .sidebar-logo { padding: 18px 16px; border-bottom: 1px solid rgba(255,255,255,0.1); }
+    .sidebar-logo h1 { font-size: 15px; font-weight: 800; color: white; line-height: 1.3; }
+    .sidebar-logo span { font-size: 11px; color: #8BA3CC; display: block; margin-top: 2px; }
+    nav ul { list-style: none; padding: 10px 0; }
+    nav ul li a {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 16px; color: #CBD5E0; text-decoration: none;
+      font-size: 14px; border-radius: 6px; margin: 2px 8px; transition: all 0.2s;
+    }
+    nav ul li a:hover { background: rgba(255,255,255,0.08); color: white; }
+    nav ul li a.active { background: var(--primary); color: white; }
+    .nav-icon { font-size: 16px; width: 20px; text-align: center; }
+    .sidebar-footer {
+      padding: 12px 16px; border-top: 1px solid rgba(255,255,255,0.1); margin-top: auto;
+    }
+    .sidebar-footer div:first-child { font-size: 11px; color: #8BA3CC; }
+    .sidebar-footer div:last-child { font-size: 10px; color: #4A6080; margin-top: 3px; }
+    #main { flex: 1; overflow: hidden; display: flex; flex-direction: column; }
+    #topbar {
+      background: white; padding: 12px 24px; border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between; flex-shrink: 0;
+    }
+    #topbar h2 { font-size: 18px; font-weight: 700; }
+    #content { flex: 1; overflow-y: auto; padding: 20px 24px; }
+    .btn {
+      padding: 8px 16px; border: none; border-radius: 6px; cursor: pointer;
+      font-size: 13px; font-weight: 600;
+      display: inline-flex; align-items: center; gap: 6px; transition: all 0.15s;
+    }
+    .btn-primary { background: var(--primary); color: white; }
+    .btn-primary:hover { background: var(--primary-light); }
+    .btn-success { background: var(--success); color: white; }
+    .btn-danger { background: var(--danger); color: white; }
+    .btn-secondary { background: #EDF2F7; color: var(--text-primary); }
+    .btn-secondary:hover { background: #E2E8F0; }
+    .btn-sm { padding: 5px 10px; font-size: 12px; }
+    .btn-xs { padding: 3px 7px; font-size: 11px; }
+    .card { background: white; border-radius: 10px; padding: 18px; box-shadow: 0 1px 3px rgba(0,0,0,0.07); }
+    .card-title { font-size: 14px; font-weight: 700; margin-bottom: 14px; display: flex; justify-content: space-between; align-items: center; }
+    .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 20px; }
+    .kpi-card {
+      background: white; border-radius: 10px; padding: 18px;
+      border-left: 4px solid var(--primary); box-shadow: 0 1px 3px rgba(0,0,0,0.07);
+    }
+    .kpi-card.green { border-color: var(--success); }
+    .kpi-card.orange { border-color: var(--warning); }
+    .kpi-card.red { border-color: var(--danger); }
+    .kpi-card.purple { border-color: #805AD5; }
+    .kpi-card.cyan { border-color: #0891B2; }
+    .kpi-label { font-size: 12px; color: var(--text-secondary); margin-bottom: 6px; }
+    .kpi-value { font-size: 26px; font-weight: 800; }
+    .kpi-sub { font-size: 12px; color: var(--text-secondary); margin-top: 4px; }
+    .charts-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
+    .kanban-board { display: flex; gap: 12px; overflow-x: auto; padding-bottom: 10px; }
+    .kanban-col { min-width: 200px; max-width: 200px; background: #F7FAFC; border-radius: 8px; padding: 12px; }
+    .kanban-col-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+    .kanban-col-title { font-size: 11px; font-weight: 700; letter-spacing: 0.3px; }
+    .kanban-count { background: white; border-radius: 10px; padding: 2px 8px; font-size: 11px; font-weight: 700; color: var(--text-secondary); }
+    .kanban-amount { font-size: 11px; color: var(--text-secondary); margin-bottom: 8px; }
+    .deal-card {
+      background: white; border-radius: 8px; padding: 10px;
+      margin-bottom: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.07);
+      border-left: 3px solid var(--primary); cursor: pointer; transition: box-shadow 0.15s;
+    }
+    .deal-card:hover { box-shadow: 0 4px 10px rgba(0,0,0,0.12); }
+    .deal-card-company { font-size: 12px; font-weight: 700; margin-bottom: 4px; line-height: 1.3; }
+    .deal-card-bottom { display: flex; justify-content: space-between; align-items: center; margin-top: 5px; }
+    .deal-card-assignee { font-size: 11px; color: var(--text-secondary); }
+    .deal-card-amount { font-size: 12px; font-weight: 700; color: var(--success); }
+    .deal-card-date { font-size: 11px; margin-top: 4px; }
+    .deal-card-mrr { font-size: 10px; color: #805AD5; font-weight: 700; }
+    .deal-card-hw { font-size: 10px; color: #0891B2; font-weight: 600; }
+
+    .s-lead   { border-color: #A0AEC0; } .h-lead   { color: #718096; }
+    .s-talk   { border-color: #4299E1; } .h-talk   { color: #3182CE; }
+    .s-quote  { border-color: #ECC94B; } .h-quote  { color: #D69E2E; }
+    .s-close  { border-color: #48BB78; } .h-close  { color: #38A169; }
+    .s-setup  { border-color: #805AD5; } .h-setup  { color: #6B46C1; }
+    .s-active { border-color: #38B2AC; } .h-active { color: #2C7A7B; }
+
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 600; }
+    .badge-lead   { background: #EDF2F7; color: #718096; }
+    .badge-talk   { background: #EBF8FF; color: #2B6CB0; }
+    .badge-quote  { background: #FEFCBF; color: #744210; }
+    .badge-close  { background: #F0FFF4; color: #276749; }
+    .badge-setup  { background: #FAF5FF; color: #553C9A; }
+    .badge-active { background: #E6FFFA; color: #234E52; }
+    .badge-new    { background: #E9D8FD; color: #553C9A; }
+    .badge-up     { background: #FEEBCB; color: #7B341E; }
+
+    .ptag { display: inline-block; padding: 2px 7px; border-radius: 4px; font-size: 10px; font-weight: 600; margin: 1px; }
+    .ptag-saas { background: #EBF8FF; color: #2B6CB0; }
+    .ptag-new  { background: #FAF5FF; color: #553C9A; }
+    .ptag-hw   { background: #F0FFF4; color: #276749; }
+    .ptag-channel { background: #FFF5F5; color: #9B2C2C; font-size: 10px; }
+
+    .data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .data-table th { background: #F7FAFC; padding: 10px 12px; text-align: left; font-weight: 600; color: var(--text-secondary); border-bottom: 2px solid var(--border); font-size: 12px; }
+    .data-table td { padding: 10px 12px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+    .data-table tr:hover td { background: #FAFBFC; }
+    .filters { display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; align-items: center; }
+    .filter-select, .search-input { padding: 7px 12px; border: 1px solid var(--border); border-radius: 6px; font-size: 13px; background: white; }
+    .search-input { width: 200px; }
+    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center; }
+    .modal-overlay.active { display: flex; }
+    .modal { background: white; border-radius: 12px; padding: 24px; width: 580px; max-width: 95vw; max-height: 90vh; overflow-y: auto; }
+    .modal-title { font-size: 16px; font-weight: 700; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
+    .modal-close { cursor: pointer; font-size: 22px; color: var(--text-secondary); line-height: 1; }
+    .modal-close:hover { color: var(--danger); }
+    .form-group { margin-bottom: 14px; }
+    .form-label { display: block; font-size: 12px; font-weight: 600; color: var(--text-secondary); margin-bottom: 5px; }
+    .form-control { width: 100%; padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px; font-size: 13px; font-family: inherit; }
+    .form-control:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 2px rgba(61,90,158,0.15); }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
+    .timeline-item { display: flex; gap: 14px; margin-bottom: 14px; }
+    .timeline-dot { width: 34px; height: 34px; border-radius: 50%; background: var(--primary); color: white; display: flex; align-items: center; justify-content: center; font-size: 15px; flex-shrink: 0; }
+    .timeline-content { background: white; border-radius: 8px; padding: 12px 14px; flex: 1; box-shadow: 0 1px 2px rgba(0,0,0,0.05); border: 1px solid var(--border); }
+    .timeline-header { display: flex; justify-content: space-between; margin-bottom: 5px; align-items: center; flex-wrap: wrap; gap: 4px; }
+    .timeline-customer { font-size: 13px; font-weight: 700; }
+    .timeline-meta { font-size: 11px; color: var(--text-secondary); display: flex; gap: 8px; align-items: center; }
+    .timeline-body { font-size: 13px; color: #4A5568; line-height: 1.5; }
+    .empty-state { text-align: center; padding: 40px; color: var(--text-secondary); }
+    .empty-state-icon { font-size: 40px; margin-bottom: 12px; }
+    .empty-state-text { font-size: 14px; }
+    .card-drop-zone { border: 2px dashed var(--border); border-radius: 10px; padding: 36px 20px; text-align: center; cursor: pointer; background: #FAFBFC; transition: all 0.2s; position: relative; }
+    .card-drop-zone:hover, .card-drop-zone.dragover { border-color: var(--primary); background: #EBF0FF; }
+    .card-drop-zone input[type=file] { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+    .card-preview-wrap { position: relative; text-align: center; margin: 12px 0; }
+    .card-preview-wrap img { max-width: 100%; max-height: 260px; border-radius: 8px; border: 1px solid var(--border); }
+    .ocr-progress-bar { height: 6px; background: #EDF2F7; border-radius: 3px; overflow: hidden; margin: 8px 0; }
+    .ocr-progress-fill { height: 100%; background: var(--primary); border-radius: 3px; transition: width 0.3s; }
+    .ocr-field-row { display: grid; grid-template-columns: 90px 1fr; gap: 8px; align-items: center; margin-bottom: 8px; }
+    .ocr-field-label { font-size: 12px; font-weight: 600; color: var(--text-secondary); }
+    .ocr-raw-text { width: 100%; font-size: 12px; font-family: monospace; border: 1px solid var(--border); border-radius: 6px; padding: 8px; background: #F7FAFC; resize: vertical; color: var(--text-primary); line-height: 1.6; }
+    .camera-video { width: 100%; border-radius: 8px; border: 1px solid var(--border); max-height: 260px; object-fit: cover; }
+    .ocr-status { font-size: 13px; color: var(--text-secondary); text-align: center; padding: 6px 0; }
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #CBD5E0; border-radius: 3px; }
+    .overdue { color: var(--danger) !important; font-weight: 700; }
+    .soon { color: var(--warning) !important; }
+    .section-divider { font-size: 11px; font-weight: 700; color: #A0AEC0; text-transform: uppercase; letter-spacing: 0.8px; padding: 6px 0 4px 0; margin: 8px 0 4px 0; border-top: 1px solid var(--border); }
+
+    #hamburger-btn { display: none; background: none; border: none; cursor: pointer; padding: 4px 6px; color: var(--text-primary); font-size: 24px; line-height: 1; border-radius: 6px; }
+    #hamburger-btn:hover { background: #EDF2F7; }
+    #sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 490; }
+    #sidebar-overlay.active { display: block; }
+    #bottom-nav { display: none; position: fixed; bottom: 0; left: 0; right: 0; background: var(--sidebar-bg); border-top: 1px solid rgba(255,255,255,0.1); z-index: 400; height: 58px; }
+    .bnav-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #8BA3CC; text-decoration: none; font-size: 10px; gap: 2px; padding: 6px 0; transition: color 0.15s; }
+    .bnav-item .bnav-icon { font-size: 20px; line-height: 1; }
+    .bnav-item:hover, .bnav-item.active { color: white; }
+    .bnav-add { background: var(--primary); border-radius: 12px; margin: 8px 4px; color: white !important; font-size: 11px; font-weight: 700; }
+    .bnav-add .bnav-icon { font-size: 22px; }
+
+    @media (max-width: 768px) {
+      body { flex-direction: column; overflow: hidden; }
+      #sidebar { position: fixed; top: 0; left: -250px; height: 100%; width: 240px; z-index: 500; transition: left 0.25s ease; overflow-y: auto; }
+      #sidebar.sp-open { left: 0; }
+      #main { width: 100%; height: 100vh; flex-direction: column; }
+      #topbar { padding: 10px 14px; flex-wrap: nowrap; gap: 8px; }
+      #topbar h2 { font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1; }
+      #hamburger-btn { display: flex; order: -1; flex-shrink: 0; }
+      #today-date { display: none !important; }
+      .btn-export-sp { display: none !important; }
+      #content { padding: 12px; padding-bottom: 70px; }
+      .kpi-grid { grid-template-columns: repeat(2,1fr); gap: 10px; margin-bottom: 14px; }
+      .kpi-card { padding: 14px 12px; }
+      .kpi-value { font-size: 20px; }
+      .charts-row { grid-template-columns: 1fr; gap: 12px; margin-bottom: 14px; }
+      .kanban-col { min-width: 175px; max-width: 175px; padding: 10px; }
+      .deal-card-company { font-size: 11px; }
+      .modal { width: 98vw !important; max-width: 98vw !important; padding: 16px 14px; border-radius: 10px 10px 0 0; max-height: 92vh; }
+      .modal-overlay { align-items: flex-end; }
+      .form-row { grid-template-columns: 1fr !important; }
+      .modal-actions { flex-wrap: wrap; }
+      .modal-actions .btn { flex: 1 1 calc(50% - 5px); justify-content: center; }
+      .table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+      .data-table { min-width: 580px; }
+      #bottom-nav { display: flex; }
+      .filter-select { max-width: 120px; font-size: 12px; padding: 6px 8px; }
+      .search-input { width: 140px; font-size: 12px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ローディング -->
+<div id="loading-overlay" style="display:none;position:fixed;inset:0;background:rgba(255,255,255,0.92);z-index:3000;flex-direction:column;align-items:center;justify-content:center;gap:14px;">
+  <div style="font-size:48px;">⏳</div>
+  <div id="loading-text" style="font-size:15px;font-weight:700;color:#3D5A9E;">読み込み中...</div>
+  <div style="font-size:12px;color:#718096;" id="loading-sub"></div>
+</div>
+
+<!-- 設定モーダル -->
+<div class="modal-overlay" id="settings-modal">
+  <div class="modal" style="width:600px;">
+    <div class="modal-title">
+      <span>⚙️ Notion連携 設定</span>
+      <span class="modal-close" id="settings-close-btn" onclick="closeModal('settings-modal')">✕</span>
+    </div>
+    <div style="background:#EBF8FF;border:1px solid #BEE3F8;border-radius:8px;padding:12px 14px;margin-bottom:18px;font-size:13px;color:#2C5282;line-height:1.7;">
+      <strong>📋 初回設定の手順</strong><br>
+      ① Notionで3つのデータベースを作成（下記スキーマ参照）<br>
+      ② Cloudflare WorkerをデプロイしてURLを取得<br>
+      ③ 下のフォームに各IDとURLを入力して保存
+    </div>
+    <div class="form-group">
+      <label class="form-label">🔗 Cloudflare Worker URL *</label>
+      <input type="url" id="cfg-worker" class="form-control" placeholder="https://anest-crm.xxxxx.workers.dev">
+    </div>
+    <div style="border:1px solid var(--border);border-radius:8px;padding:14px;margin-bottom:14px;">
+      <div style="font-size:13px;font-weight:700;margin-bottom:10px;">📦 Notion データベース ID</div>
+      <div class="form-group">
+        <label class="form-label">💼 商談DB（Deals）</label>
+        <input type="text" id="cfg-db-deals" class="form-control" placeholder="32桁のデータベースID">
+      </div>
+      <div class="form-group">
+        <label class="form-label">🏢 顧客DB（Customers）</label>
+        <input type="text" id="cfg-db-customers" class="form-control" placeholder="32桁のデータベースID">
+      </div>
+      <div class="form-group" style="margin-bottom:0;">
+        <label class="form-label">📝 活動記録DB（Activities）</label>
+        <input type="text" id="cfg-db-activities" class="form-control" placeholder="32桁のデータベースID">
+      </div>
+    </div>
+    <details style="margin-bottom:14px;">
+      <summary style="cursor:pointer;font-size:13px;font-weight:600;color:var(--primary);padding:6px 0;">📖 Notionデータベース スキーマを見る</summary>
+      <div style="margin-top:10px;font-size:12px;background:#F7FAFC;border-radius:8px;padding:12px;line-height:1.9;">
+        <strong>💼 商談DB</strong> — プロパティ名(型)<br>
+        顧客名(タイトル) / 製品(セレクト) / ステージ(セレクト) / 種別(セレクト) / 金額(数値) / 台数(数値) / 担当者(テキスト) / 次回アクション(テキスト) / 次回日(日付) / メモ(テキスト) / <strong style="color:#805AD5;">MRR(数値) / 初期費用(数値) / 予定車両数(数値) / 対象製品(マルチセレクト) / 販売チャネル(セレクト)</strong>
+        <hr style="margin:8px 0;border-color:var(--border);">
+        <strong>🏢 顧客DB</strong><br>
+        会社名(タイトル) / 業種(セレクト) / 地域(セレクト) / 保有台数(数値) / 担当者名(テキスト) / 電話番号(テキスト) / 導入済み製品(マルチセレクト) / メモ(テキスト) / <strong style="color:#805AD5;">車両用途(マルチセレクト) / 既存機器メーカー(テキスト) / 抱えている課題(マルチセレクト)</strong>
+        <hr style="margin:8px 0;border-color:var(--border);">
+        <strong>📝 活動記録DB</strong><br>
+        顧客名(タイトル) / 種別(セレクト：📞,🤝,📧,💻,📋,✅,🎓,<strong style="color:#805AD5;">🔧,🏠,📅</strong>,📝) / 内容(テキスト) / 活動日(日付) / 担当者(テキスト)
+      </div>
+    </details>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" id="cfg-demo-btn" onclick="useDemoMode()">🧪 デモモードで使う</button>
+      <button class="btn btn-primary" onclick="saveConfig()">💾 保存して接続</button>
+    </div>
+  </div>
+</div>
+
+<div id="sidebar-overlay" onclick="closeSidebar()"></div>
+
+<!-- SIDEBAR -->
+<aside id="sidebar">
+  <div class="sidebar-logo">
+    <h1>🚛 アネストCRM</h1>
+    <span>営業管理システム</span>
+  </div>
+  <nav>
+    <ul>
+      <li><a href="#" class="active" data-view="dashboard"><span class="nav-icon">📊</span>ダッシュボード</a></li>
+      <li><a href="#" data-view="deals"><span class="nav-icon">💼</span>商談管理</a></li>
+      <li><a href="#" data-view="customers"><span class="nav-icon">🏢</span>顧客管理</a></li>
+      <li><a href="#" data-view="activities"><span class="nav-icon">📝</span>活動記録</a></li>
+      <li><a href="#" data-view="reports"><span class="nav-icon">📈</span>レポート</a></li>
+    </ul>
+    <div class="section-divider" style="padding:6px 16px;border-top:1px solid rgba(255,255,255,0.08);color:#4A6080;font-size:10px;margin:8px 0 0 0;">製品カテゴリ</div>
+    <ul>
+      <li><a href="#" onclick="filterByProduct('GrowthBOX');return false;" id="pnav-gbc"><span class="nav-icon">🚚</span>GrowthBOX</a></li>
+      <li><a href="#" onclick="filterByProduct('BSS for ALC');return false;" id="pnav-alc"><span class="nav-icon">🍺</span>BSS for ALC</a></li>
+      <li><a href="#" onclick="filterByProduct('ドラレコ/デジタコ');return false;" id="pnav-hw"><span class="nav-icon">📹</span>ドラレコ/デジタコ</a></li>
+    </ul>
+  </nav>
+  <div class="sidebar-footer">
+    <div>株式会社アネストシステム</div>
+    <div>🎯 2035年 売上高100億円目標</div>
+    <div style="font-size:9px;color:#5A7AAA;margin-top:2px;">📌 中間目標：2030年までに13,000社導入</div>
+  </div>
+</aside>
+
+<!-- MAIN -->
+<div id="main">
+  <div id="topbar">
+    <button id="hamburger-btn" onclick="openSidebar()" aria-label="メニュー">☰</button>
+    <h2 id="page-title">📊 ダッシュボード</h2>
+    <div style="display:flex;gap:8px;align-items:center;flex-shrink:0;">
+      <span id="today-date" style="font-size:12px;color:var(--text-secondary);"></span>
+      <span id="notion-status" style="font-size:11px;padding:3px 8px;border-radius:10px;background:#F0FFF4;color:#276749;display:none;">● Notion接続中</span>
+      <button class="btn btn-secondary btn-sm btn-export-sp" onclick="exportCSV()">📥 CSV</button>
+      <button class="btn btn-secondary btn-sm" onclick="openSettings()" title="Notion設定">⚙️</button>
+      <button class="btn btn-primary btn-sm" id="add-btn" onclick="openAddModal()">＋ 追加</button>
+    </div>
+  </div>
+  <div id="content"></div>
+</div>
+
+<!-- ボトムナビ -->
+<nav id="bottom-nav">
+  <a href="#" class="bnav-item active" id="bnav-dashboard" onclick="navigate('dashboard');return false;"><span class="bnav-icon">📊</span><span>ホーム</span></a>
+  <a href="#" class="bnav-item" id="bnav-deals" onclick="navigate('deals');return false;"><span class="bnav-icon">💼</span><span>商談</span></a>
+  <a href="#" class="bnav-item bnav-add" onclick="openAddModal();return false;"><span class="bnav-icon">＋</span><span>追加</span></a>
+  <a href="#" class="bnav-item" id="bnav-customers" onclick="navigate('customers');return false;"><span class="bnav-icon">🏢</span><span>顧客</span></a>
+  <a href="#" class="bnav-item" id="bnav-activities" onclick="navigate('activities');return false;"><span class="bnav-icon">📝</span><span>活動</span></a>
+</nav>
+
+<!-- MODAL: 商談 -->
+<div class="modal-overlay" id="deal-modal">
+  <div class="modal" style="width:640px;">
+    <div class="modal-title">
+      <span id="deal-modal-title">商談を追加</span>
+      <span class="modal-close" onclick="closeModal('deal-modal')">✕</span>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">顧客名 *</label><input type="text" id="d-customer" class="form-control" placeholder="例）〇〇運輸株式会社" list="dl-customers"><datalist id="dl-customers"></datalist></div>
+      <div class="form-group"><label class="form-label">担当者 *</label><input type="text" id="d-assignee" class="form-control" placeholder="例）田中"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">製品 *</label>
+        <select id="d-product" class="form-control">
+          <optgroup label="── GrowthBOX（運行管理）">
+            <option value="GrowthBOX">GrowthBOX</option>
+            <option value="GrowthBOX DR">GrowthBOX DR（安全運転管理）</option>
+            <option value="GrowthBOX 労務管理OP">GrowthBOX 労務管理オプション</option>
+            <option value="GrowthBOX 運行指示書OP">GrowthBOX 運行指示書オプション</option>
+            <option value="GrowthBOX 出退勤管理OP">GrowthBOX 出退勤管理オプション</option>
+          </optgroup>
+          <optgroup label="── BSS（グループウェア）">
+            <option value="BSS">BSS</option>
+            <option value="BSS for ALC">BSS for ALC（アルコール管理）</option>
+            <option value="BSS 自動点呼">BSS 自動点呼機能</option>
+          </optgroup>
+          <optgroup label="── 新サービス">
+            <option value="BPaaS（業務代行）">BPaaS（業務代行サービス）</option>
+            <option value="EV支援ソリューション">EV支援ソリューション</option>
+          </optgroup>
+          <optgroup label="── ハードウェア">
+            <option value="デジタルタコグラフ">デジタルタコグラフ</option>
+            <option value="ドライブレコーダー">ドライブレコーダー</option>
+            <option value="アルコールチェッカー">アルコールチェッカー</option>
+            <option value="血圧計・関連ソフト">血圧計・関連ソフト</option>
+          </optgroup>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">ステージ</label>
+        <select id="d-stage" class="form-control">
+          <option value="リード">① リード</option>
+          <option value="商談中">② 商談中</option>
+          <option value="見積提示">③ 見積提示</option>
+          <option value="受注">④ 受注</option>
+          <option value="納品・機器設定待ち">⑤ 納品・機器設定待ち</option>
+          <option value="稼働開始">✅ 稼働開始</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">商談種別</label>
+        <select id="d-type" class="form-control"><option value="新規">新規</option><option value="アップセル">アップセル（既存顧客）</option></select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">販売チャネル</label>
+        <select id="d-channel" class="form-control"><option value="直販">直販</option><option value="代理店経由">代理店経由</option></select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">MRR（月額SaaS利用料・円）</label><input type="number" id="d-mrr" class="form-control" placeholder="例）30000"></div>
+      <div class="form-group"><label class="form-label">初期費用（HW代等・円）</label><input type="number" id="d-initial-cost" class="form-control" placeholder="例）500000"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">予定車両数</label><input type="number" id="d-planned-vehicles" class="form-control" placeholder="例）30"></div>
+      <div class="form-group"><label class="form-label">次回アクション日</label><input type="date" id="d-next-date" class="form-control"></div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">対象製品（複数選択可）</label>
+      <div style="display:flex;flex-wrap:wrap;gap:10px;padding:10px;border:1px solid var(--border);border-radius:6px;background:#FAFBFC;">
+        <label style="font-size:12px;display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" class="dp-check" value="GrowthBOX"> GrowthBOX</label>
+        <label style="font-size:12px;display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" class="dp-check" value="GrowthBOX DR"> GrowthBOX DR</label>
+        <label style="font-size:12px;display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" class="dp-check" value="BSS"> BSS</label>
+        <label style="font-size:12px;display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" class="dp-check" value="BSS for ALC"> BSS for ALC</label>
+        <label style="font-size:12px;display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" class="dp-check" value="BSS 自動点呼"> BSS 自動点呼</label>
+        <label style="font-size:12px;display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" class="dp-check" value="BPaaS（業務代行）"> BPaaS</label>
+        <label style="font-size:12px;display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" class="dp-check" value="デジタルタコグラフ"> デジタコ</label>
+        <label style="font-size:12px;display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" class="dp-check" value="ドライブレコーダー"> ドラレコ</label>
+        <label style="font-size:12px;display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" class="dp-check" value="アルコールチェッカー"> アルコールチェッカー</label>
+        <label style="font-size:12px;display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" class="dp-check" value="血圧計・関連ソフト"> 血圧計</label>
+      </div>
+    </div>
+    <div class="form-group"><label class="form-label">次回アクション内容</label><input type="text" id="d-next-action" class="form-control" placeholder="例）デモ実施、見積提出"></div>
+    <div class="form-group"><label class="form-label">メモ・特記事項</label><textarea id="d-notes" class="form-control" rows="3" placeholder="顧客の状況、競合情報など"></textarea></div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('deal-modal')">キャンセル</button>
+      <button class="btn btn-primary" onclick="saveDeal()">💾 保存する</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: 顧客 -->
+<div class="modal-overlay" id="customer-modal">
+  <div class="modal">
+    <div class="modal-title">
+      <span id="customer-modal-title">顧客を追加</span>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <button class="btn btn-secondary btn-sm" onclick="openCardOCR()" title="名刺を読み込んで自動入力">📷 名刺読込</button>
+        <span class="modal-close" onclick="closeModal('customer-modal')">✕</span>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">会社名 *</label><input type="text" id="c-name" class="form-control" placeholder="例）〇〇運輸株式会社"></div>
+      <div class="form-group">
+        <label class="form-label">業種</label>
+        <select id="c-industry" class="form-control">
+          <option>一般貨物運送</option><option>特別積合せ貨物運送</option><option>宅配便</option><option>引越運送</option>
+          <option>タンクローリー</option><option>冷蔵・冷凍輸送</option><option>産業廃棄物運送</option><option>バス・タクシー</option>
+          <option>その他運送業</option><option>一般事業者（運送業以外）</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">都道府県</label>
+        <select id="c-region" class="form-control">
+          <option>北海道</option><option>青森</option><option>岩手</option><option>宮城</option><option>秋田</option><option>山形</option><option>福島</option>
+          <option>茨城</option><option>栃木</option><option>群馬</option><option>埼玉</option><option>千葉</option><option>東京</option><option>神奈川</option>
+          <option>新潟</option><option>富山</option><option>石川</option><option>福井</option><option>山梨</option><option>長野</option>
+          <option>岐阜</option><option>静岡</option><option>愛知</option><option>三重</option>
+          <option>滋賀</option><option>京都</option><option>大阪</option><option>兵庫</option><option>奈良</option><option>和歌山</option>
+          <option>鳥取</option><option>島根</option><option>岡山</option><option>広島</option><option>山口</option>
+          <option>徳島</option><option>香川</option><option>愛媛</option><option>高知</option>
+          <option>福岡</option><option>佐賀</option><option>長崎</option><option selected>熊本</option><option>大分</option><option>宮崎</option><option>鹿児島</option><option>沖縄</option>
+        </select>
+      </div>
+      <div class="form-group"><label class="form-label">保有台数</label><input type="number" id="c-fleet-size" class="form-control" placeholder="例）50"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">担当者名</label><input type="text" id="c-contact" class="form-control" placeholder="例）山田 部長"></div>
+      <div class="form-group"><label class="form-label">電話番号</label><input type="tel" id="c-phone" class="form-control" placeholder="例）096-000-0000"></div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">導入済み製品（複数選択可）</label>
+      <div style="display:flex;flex-wrap:wrap;gap:10px;padding:12px;border:1px solid var(--border);border-radius:6px;background:#FAFBFC;">
+        <label style="font-size:12px;display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" class="cp-check" value="GrowthBOX"> GrowthBOX</label>
+        <label style="font-size:12px;display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" class="cp-check" value="GrowthBOX DR"> GrowthBOX DR</label>
+        <label style="font-size:12px;display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" class="cp-check" value="GrowthBOX 労務管理OP"> 労務管理OP</label>
+        <label style="font-size:12px;display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" class="cp-check" value="GrowthBOX 運行指示書OP"> 運行指示書OP</label>
+        <label style="font-size:12px;display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" class="cp-check" value="GrowthBOX 出退勤管理OP"> 出退勤管理OP</label>
+        <label style="font-size:12px;display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" class="cp-check" value="BSS"> BSS</label>
+        <label style="font-size:12px;display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" class="cp-check" value="BSS for ALC"> BSS for ALC</label>
+        <label style="font-size:12px;display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" class="cp-check" value="BSS 自動点呼"> BSS 自動点呼</label>
+        <label style="font-size:12px;display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" class="cp-check" value="BPaaS（業務代行）"> BPaaS</label>
+        <label style="font-size:12px;display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" class="cp-check" value="デジタルタコグラフ"> デジタコ</label>
+        <label style="font-size:12px;display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" class="cp-check" value="ドライブレコーダー"> ドラレコ</label>
+        <label style="font-size:12px;display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" class="cp-check" value="アルコールチェッカー"> アルコールチェッカー</label>
+        <label style="font-size:12px;display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" class="cp-check" value="血圧計・関連ソフト"> 血圧計</label>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">車両用途（複数選択可）</label>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;padding:10px;border:1px solid var(--border);border-radius:6px;background:#FAFBFC;">
+          <label style="font-size:12px;display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" class="cv-check" value="長距離幹線"> 長距離幹線</label>
+          <label style="font-size:12px;display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" class="cv-check" value="地場配送"> 地場配送</label>
+          <label style="font-size:12px;display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" class="cv-check" value="宅配"> 宅配</label>
+          <label style="font-size:12px;display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" class="cv-check" value="冷凍冷蔵"> 冷凍冷蔵</label>
+          <label style="font-size:12px;display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" class="cv-check" value="タンクローリー"> タンクローリー</label>
+          <label style="font-size:12px;display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" class="cv-check" value="旅客バス"> 旅客バス</label>
+          <label style="font-size:12px;display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" class="cv-check" value="その他"> その他</label>
+        </div>
+      </div>
+      <div class="form-group"><label class="form-label">既存機器メーカー</label><input type="text" id="c-existing-vendor" class="form-control" placeholder="例）矢崎、デンソーテン"></div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">抱えている課題（複数選択可）</label>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;padding:10px;border:1px solid var(--border);border-radius:6px;background:#FAFBFC;">
+        <label style="font-size:12px;display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" class="cc-check" value="2024年問題（労務管理）"> 2024年問題</label>
+        <label style="font-size:12px;display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" class="cc-check" value="点呼業務の負担"> 点呼業務の負担</label>
+        <label style="font-size:12px;display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" class="cc-check" value="事故削減"> 事故削減</label>
+        <label style="font-size:12px;display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" class="cc-check" value="DX推進"> DX推進</label>
+        <label style="font-size:12px;display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" class="cc-check" value="法令対応"> 法令対応</label>
+        <label style="font-size:12px;display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" class="cc-check" value="コスト削減"> コスト削減</label>
+      </div>
+    </div>
+    <div class="form-group"><label class="form-label">メモ</label><textarea id="c-notes" class="form-control" rows="2" placeholder="特記事項"></textarea></div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('customer-modal')">キャンセル</button>
+      <button class="btn btn-primary" onclick="saveCustomer()">💾 保存する</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: 活動 -->
+<div class="modal-overlay" id="activity-modal">
+  <div class="modal">
+    <div class="modal-title"><span>活動を記録</span><span class="modal-close" onclick="closeModal('activity-modal')">✕</span></div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">顧客名 *</label><input type="text" id="a-customer" class="form-control" list="dl-act-customers"><datalist id="dl-act-customers"></datalist></div>
+      <div class="form-group">
+        <label class="form-label">活動種別 *</label>
+        <select id="a-type" class="form-control">
+          <option value="📞">📞 電話</option>
+          <option value="🤝">🤝 訪問</option>
+          <option value="📧">📧 メール</option>
+          <option value="💻">💻 デモ</option>
+          <option value="📋">📋 見積提出</option>
+          <option value="✅">✅ 契約締結</option>
+          <option value="🎓">🎓 販売店向け勉強会</option>
+          <option value="🔧">🔧 導入支援・初期設定</option>
+          <option value="🏠">🏠 現地フォロー・QA対応</option>
+          <option value="📅">📅 定期連絡</option>
+          <option value="📝">📝 その他</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">活動日 *</label><input type="date" id="a-date" class="form-control"></div>
+      <div class="form-group"><label class="form-label">担当者</label><input type="text" id="a-assignee" class="form-control" placeholder="例）田中"></div>
+    </div>
+    <div class="form-group"><label class="form-label">活動内容・結果 *</label><textarea id="a-content" class="form-control" rows="4" placeholder="活動の詳細、顧客の反応など"></textarea></div>
+    <div style="background:#FAF5FF;border:1px solid #E9D8FD;border-radius:8px;padding:10px 12px;font-size:12px;color:#553C9A;margin-bottom:4px;">
+      💡 <strong>代理店営業のヒント:</strong> 「🎓 販売店向け勉強会」で代理店への製品教育を記録できます。代理店チャネルの育成状況を可視化し、KPIOS経営ダッシュボードへ反映されます。
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('activity-modal')">キャンセル</button>
+      <button class="btn btn-primary" onclick="saveActivity()">📝 記録する</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: 名刺OCR -->
+<div class="modal-overlay" id="card-ocr-modal">
+  <div class="modal" style="width:660px;">
+    <div class="modal-title"><span>📷 名刺読込（OCR）</span><span class="modal-close" onclick="closeCardModal()">✕</span></div>
+    <div id="ocr-step-input">
+      <div style="display:flex;gap:10px;margin-bottom:12px;">
+        <button class="btn btn-secondary btn-sm" id="ocr-tab-upload" onclick="switchOcrTab('upload')" style="flex:1;">📁 画像アップロード</button>
+        <button class="btn btn-secondary btn-sm" id="ocr-tab-camera" onclick="switchOcrTab('camera')" style="flex:1;">📷 カメラ撮影</button>
+      </div>
+      <div id="ocr-panel-upload">
+        <div class="card-drop-zone" id="card-drop-zone" ondragover="event.preventDefault();this.classList.add('dragover')" ondragleave="this.classList.remove('dragover')" ondrop="handleCardDrop(event)">
+          <input type="file" id="card-file-input" accept="image/*" onchange="handleCardFile(this.files[0])">
+          <div style="font-size:36px;margin-bottom:8px;">🪪</div>
+          <div style="font-size:14px;font-weight:600;">名刺画像をドロップ</div>
+          <div style="font-size:12px;color:var(--text-secondary);margin-top:4px;">またはクリックしてファイルを選択</div>
+        </div>
+      </div>
+      <div id="ocr-panel-camera" style="display:none;">
+        <video id="ocr-video" class="camera-video" autoplay playsinline style="display:none;"></video>
+        <div id="camera-placeholder" style="background:#1A202C;border-radius:8px;padding:40px;text-align:center;color:#718096;">
+          <div style="font-size:32px;margin-bottom:8px;">📷</div><div style="font-size:13px;">カメラを起動してください</div>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:10px;justify-content:center;">
+          <button class="btn btn-secondary" id="btn-camera-start" onclick="startCamera()">📷 カメラ起動</button>
+          <button class="btn btn-primary" id="btn-camera-shoot" onclick="shootCamera()" style="display:none;">📸 撮影</button>
+          <button class="btn btn-secondary" id="btn-camera-stop" onclick="stopCamera()" style="display:none;">■ 停止</button>
+        </div>
+      </div>
+      <div id="card-preview-area" style="display:none;margin-top:14px;">
+        <div class="card-preview-wrap"><img id="card-preview-img" src="" alt="名刺プレビュー"></div>
+        <canvas id="card-canvas" style="display:none;"></canvas>
+        <div style="text-align:center;margin-top:8px;">
+          <button class="btn btn-primary" onclick="startOCR()">🔍 OCR読み込み開始</button>
+          <button class="btn btn-secondary btn-sm" onclick="resetCardOCR()" style="margin-left:8px;">やり直す</button>
+        </div>
+      </div>
+    </div>
+    <div id="ocr-step-processing" style="display:none;padding:20px 0;text-align:center;">
+      <div style="font-size:32px;margin-bottom:12px;">🔍</div>
+      <div style="font-size:14px;font-weight:600;margin-bottom:10px;">OCR処理中...</div>
+      <div class="ocr-progress-bar"><div class="ocr-progress-fill" id="ocr-progress-fill" style="width:0%"></div></div>
+      <div class="ocr-status" id="ocr-status-text">初期化中...</div>
+    </div>
+    <div id="ocr-step-result" style="display:none;">
+      <div style="display:flex;gap:14px;">
+        <div style="flex:1;"><div class="form-label" style="margin-bottom:6px;">📄 読み取りテキスト（編集可）</div><textarea id="ocr-raw-text" class="ocr-raw-text" rows="10" oninput="reParseOCR()"></textarea></div>
+        <div style="flex:1;">
+          <div class="form-label" style="margin-bottom:10px;">✏ 抽出項目（修正可）</div>
+          <div class="ocr-field-row"><span class="ocr-field-label">会社名</span><input type="text" id="ocr-company" class="form-control"></div>
+          <div class="ocr-field-row"><span class="ocr-field-label">担当者名</span><input type="text" id="ocr-contact" class="form-control"></div>
+          <div class="ocr-field-row"><span class="ocr-field-label">電話番号</span><input type="text" id="ocr-phone" class="form-control"></div>
+          <div class="ocr-field-row"><span class="ocr-field-label">FAX</span><input type="text" id="ocr-fax" class="form-control"></div>
+          <div class="ocr-field-row"><span class="ocr-field-label">メール</span><input type="text" id="ocr-email" class="form-control"></div>
+          <div class="ocr-field-row"><span class="ocr-field-label">役職</span><input type="text" id="ocr-title" class="form-control"></div>
+          <div class="ocr-field-row"><span class="ocr-field-label">住所</span><input type="text" id="ocr-address" class="form-control"></div>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" onclick="resetCardOCR()">↩ やり直す</button>
+        <button class="btn btn-primary" onclick="applyCardData()">✅ 顧客フォームに取込む</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: 商談詳細 -->
+<div class="modal-overlay" id="deal-detail-modal">
+  <div class="modal" style="width:640px;">
+    <div class="modal-title"><span id="detail-modal-title">商談詳細</span><span class="modal-close" onclick="closeModal('deal-detail-modal')">✕</span></div>
+    <div id="deal-detail-content"></div>
+    <div class="modal-actions">
+      <button class="btn btn-danger btn-sm" id="detail-delete-btn">🗑 削除</button>
+      <button class="btn btn-secondary" onclick="closeModal('deal-detail-modal')">閉じる</button>
+      <button class="btn btn-primary" id="detail-edit-btn">✏ 編集</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════
+//  定数
+// ═══════════════════════════════════════════════
+const STAGES = ['リード','商談中','見積提示','受注','納品・機器設定待ち','稼働開始'];
+const STAGE_COLORS = {'リード':'#A0AEC0','商談中':'#4299E1','見積提示':'#ECC94B','受注':'#48BB78','納品・機器設定待ち':'#805AD5','稼働開始':'#38B2AC'};
+const STAGE_CLASS  = {'リード':'s-lead','商談中':'s-talk','見積提示':'s-quote','受注':'s-close','納品・機器設定待ち':'s-setup','稼働開始':'s-active'};
+const STAGE_HCLASS = {'リード':'h-lead','商談中':'h-talk','見積提示':'h-quote','受注':'h-close','納品・機器設定待ち':'h-setup','稼働開始':'h-active'};
+const BADGE_CLASS  = {'リード':'badge-lead','商談中':'badge-talk','見積提示':'badge-quote','受注':'badge-close','納品・機器設定待ち':'badge-setup','稼働開始':'badge-active'};
+
+const SAAS_P = ['GrowthBOX','GrowthBOX DR','GrowthBOX 労務管理OP','GrowthBOX 運行指示書OP','GrowthBOX 出退勤管理OP','BSS','BSS for ALC','BSS 自動点呼'];
+const NEW_P  = ['BPaaS（業務代行）','EV支援ソリューション'];
+const HW_P   = ['デジタルタコグラフ','ドライブレコーダー','アルコールチェッカー','血圧計・関連ソフト'];
+const ALL_P  = [...SAAS_P,...NEW_P,...HW_P];
+
+function ptagClass(p) { if (SAAS_P.includes(p)) return 'ptag-saas'; if (NEW_P.includes(p)) return 'ptag-new'; return 'ptag-hw'; }
+
+// ═══════════════════════════════════════════════
+//  設定
+// ═══════════════════════════════════════════════
+let CFG = { workerUrl:'', dbDeals:'', dbCustomers:'', dbActivities:'' };
+let DEMO_MODE = false;
+
+function loadConfig() { const s=localStorage.getItem('anest_crm_config'); if(s) CFG=JSON.parse(s); }
+function saveConfig() {
+  CFG.workerUrl=document.getElementById('cfg-worker').value.trim().replace(/\/$/,'');
+  CFG.dbDeals=document.getElementById('cfg-db-deals').value.trim().replace(/-/g,'');
+  CFG.dbCustomers=document.getElementById('cfg-db-customers').value.trim().replace(/-/g,'');
+  CFG.dbActivities=document.getElementById('cfg-db-activities').value.trim().replace(/-/g,'');
+  if(!CFG.workerUrl||!CFG.dbDeals||!CFG.dbCustomers||!CFG.dbActivities){alert('すべての項目を入力してください');return;}
+  localStorage.setItem('anest_crm_config',JSON.stringify(CFG));
+  DEMO_MODE=false; closeModal('settings-modal');
+  showLoading(true,'Notionと接続中...');
+  loadDB().then(()=>{showLoading(false);renderView(currentView);updateNotionStatus();});
+}
+function openSettings() {
+  document.getElementById('cfg-worker').value=CFG.workerUrl||'';
+  document.getElementById('cfg-db-deals').value=CFG.dbDeals||'';
+  document.getElementById('cfg-db-customers').value=CFG.dbCustomers||'';
+  document.getElementById('cfg-db-activities').value=CFG.dbActivities||'';
+  document.getElementById('settings-close-btn').style.display=isConfigured()||DEMO_MODE?'':'none';
+  document.getElementById('cfg-demo-btn').style.display=isConfigured()?'none':'';
+  document.getElementById('settings-modal').classList.add('active');
+}
+function isConfigured(){return !!(CFG.workerUrl&&CFG.dbDeals&&CFG.dbCustomers&&CFG.dbActivities);}
+function useDemoMode(){DEMO_MODE=true;closeModal('settings-modal');initSampleData();renderView(currentView);updateNotionStatus();}
+function updateNotionStatus(){
+  const el=document.getElementById('notion-status');
+  if(isConfigured()&&!DEMO_MODE){el.textContent='● Notion接続中';el.style.cssText='font-size:11px;padding:3px 8px;border-radius:10px;background:#F0FFF4;color:#276749;display:inline;';}
+  else if(DEMO_MODE){el.textContent='🧪 デモモード';el.style.cssText='font-size:11px;padding:3px 8px;border-radius:10px;background:#FEFCBF;color:#744210;display:inline;';}
+  else el.style.display='none';
+}
+function showLoading(show,text='読み込み中...',sub=''){const el=document.getElementById('loading-overlay');el.style.display=show?'flex':'none';if(show){document.getElementById('loading-text').textContent=text;document.getElementById('loading-sub').textContent=sub;}}
+
+// ═══════════════════════════════════════════════
+//  Notion API
+// ═══════════════════════════════════════════════
+async function nFetch(path,method='GET',body=null){
+  const res=await fetch(CFG.workerUrl+path,{method,headers:{'Content-Type':'application/json'},body:body?JSON.stringify(body):undefined});
+  if(!res.ok){const err=await res.text();throw new Error(`Notion API ${res.status}: ${err}`);}return res.json();
+}
+async function nQueryAll(dbId,sorts=[]){const pages=[];let cursor;do{const body={page_size:100,sorts};if(cursor)body.start_cursor=cursor;const data=await nFetch(`/v1/databases/${dbId}/query`,'POST',body);pages.push(...(data.results||[]));cursor=data.has_more?data.next_cursor:null;}while(cursor);return pages;}
+async function nCreate(p){return nFetch('/v1/pages','POST',p);}
+async function nUpdate(pageId,properties){return nFetch(`/v1/pages/${pageId}`,'PATCH',{properties});}
+async function nArchive(pageId){return nFetch(`/v1/pages/${pageId}`,'PATCH',{archived:true});}
+const rt=(arr)=>arr?.[0]?.plain_text||'';
+const ttl=(arr)=>arr?.[0]?.plain_text||'';
+
+// ═══════════════════════════════════════════════
+//  データ変換（Notion ↔ JS） — KPIOS拡張対応
+// ═══════════════════════════════════════════════
+function notionToDeal(page){
+  const p=page.properties;
+  return {
+    id:page.id, customer:ttl(p['顧客名']?.title), product:p['製品']?.select?.name||'',
+    stage:p['ステージ']?.select?.name||'リード', type:p['種別']?.select?.name||'新規',
+    amount:p['金額']?.number||0, vehicles:p['台数']?.number||0,
+    assignee:rt(p['担当者']?.rich_text), nextAction:rt(p['次回アクション']?.rich_text),
+    nextDate:p['次回日']?.date?.start||'', notes:rt(p['メモ']?.rich_text),
+    // KPIOS拡張
+    mrr:p['MRR']?.number||0, initialCost:p['初期費用']?.number||0,
+    plannedVehicles:p['予定車両数']?.number||0,
+    targetProducts:(p['対象製品']?.multi_select||[]).map(s=>s.name),
+    salesChannel:p['販売チャネル']?.select?.name||'',
+    createdAt:page.created_time?.split('T')[0]||'', updatedAt:page.last_edited_time?.split('T')[0]||'',
+  };
+}
+function dealToNotion(deal){
+  return {
+    parent:{database_id:CFG.dbDeals},
+    properties:{
+      '顧客名':{title:[{text:{content:deal.customer||''}}]},
+      '製品':{select:{name:deal.product||'GrowthBOX'}},
+      'ステージ':{select:{name:deal.stage||'リード'}},
+      '種別':{select:{name:deal.type||'新規'}},
+      '金額':{number:deal.amount||0},'台数':{number:deal.vehicles||0},
+      '担当者':{rich_text:[{text:{content:deal.assignee||''}}]},
+      '次回アクション':{rich_text:[{text:{content:deal.nextAction||''}}]},
+      '次回日':deal.nextDate?{date:{start:deal.nextDate}}:{date:null},
+      'メモ':{rich_text:[{text:{content:(deal.notes||'').slice(0,2000)}}]},
+      'MRR':{number:deal.mrr||0},'初期費用':{number:deal.initialCost||0},
+      '予定車両数':{number:deal.plannedVehicles||0},
+      '対象製品':{multi_select:(deal.targetProducts||[]).map(n=>({name:n}))},
+      '販売チャネル':deal.salesChannel?{select:{name:deal.salesChannel}}:{select:null},
+    },
+  };
+}
+function notionToCustomer(page){const p=page.properties;return{id:page.id,name:ttl(p['会社名']?.title),industry:p['業種']?.select?.name||'',region:p['地域']?.select?.name||'',fleetSize:p['保有台数']?.number||0,contact:rt(p['担当者名']?.rich_text),phone:rt(p['電話番号']?.rich_text),products:(p['導入済み製品']?.multi_select||[]).map(s=>s.name),notes:rt(p['メモ']?.rich_text),vehicleUsage:(p['車両用途']?.multi_select||[]).map(s=>s.name),existingVendor:rt(p['既存機器メーカー']?.rich_text),challenges:(p['抱えている課題']?.multi_select||[]).map(s=>s.name),createdAt:page.created_time?.split('T')[0]||''};}
+function customerToNotion(c){return{parent:{database_id:CFG.dbCustomers},properties:{'会社名':{title:[{text:{content:c.name||''}}]},'業種':{select:c.industry?{name:c.industry}:null},'地域':{select:c.region?{name:c.region}:null},'保有台数':{number:c.fleetSize||0},'担当者名':{rich_text:[{text:{content:c.contact||''}}]},'電話番号':{rich_text:[{text:{content:c.phone||''}}]},'導入済み製品':{multi_select:(c.products||[]).map(n=>({name:n}))},'車両用途':{multi_select:(c.vehicleUsage||[]).map(n=>({name:n}))},'既存機器メーカー':{rich_text:[{text:{content:c.existingVendor||''}}]},'抱えている課題':{multi_select:(c.challenges||[]).map(n=>({name:n}))},'メモ':{rich_text:[{text:{content:(c.notes||'').slice(0,2000)}}]}}};}
+function notionToActivity(page){const p=page.properties;return{id:page.id,customer:ttl(p['顧客名']?.title),type:p['種別']?.select?.name||'📝',content:rt(p['内容']?.rich_text),date:p['活動日']?.date?.start||'',assignee:rt(p['担当者']?.rich_text)};}
+function activityToNotion(a){return{parent:{database_id:CFG.dbActivities},properties:{'顧客名':{title:[{text:{content:a.customer||''}}]},'種別':{select:{name:a.type||'📝'}},'内容':{rich_text:[{text:{content:(a.content||'').slice(0,2000)}}]},'活動日':a.date?{date:{start:a.date}}:{date:null},'担当者':{rich_text:[{text:{content:a.assignee||''}}]}}};}
+
+// ═══════════════════════════════════════════════
+//  データ
+// ═══════════════════════════════════════════════
+let db={deals:[],customers:[],activities:[]};
+let editingDealId=null, editingCustomerId=null, currentView='dashboard', quickFilterProduct='', chartInstances={};
+
+async function loadDB(){
+  if(DEMO_MODE||!isConfigured())return;
+  try{
+    showLoading(true,'Notionからデータを読み込み中...','商談・顧客・活動記録を取得しています');
+    const[dp,cp,ap]=await Promise.all([nQueryAll(CFG.dbDeals,[{property:'次回日',direction:'ascending'}]),nQueryAll(CFG.dbCustomers,[]),nQueryAll(CFG.dbActivities,[{property:'活動日',direction:'descending'}])]);
+    db.deals=dp.map(notionToDeal); db.customers=cp.map(notionToCustomer); db.activities=ap.map(notionToActivity);
+  }catch(e){alert('Notion読み込みエラー:\n'+e.message);}finally{showLoading(false);}
+}
+
+function initSampleData(){
+  db.customers=[
+    {id:'c1',name:'九州トランスポート株式会社',industry:'一般貨物運送',region:'熊本',fleetSize:120,contact:'田中 部長',phone:'096-000-1111',products:['GrowthBOX','BSS for ALC'],vehicleUsage:['長距離幹線','地場配送'],existingVendor:'矢崎（デジタコ）',challenges:['2024年問題（労務管理）','DX推進'],notes:'2022年からの主要顧客'},
+    {id:'c2',name:'福岡物流センター株式会社',industry:'特別積合せ貨物運送',region:'福岡',fleetSize:80,contact:'山本 課長',phone:'092-000-2222',products:['GrowthBOX'],vehicleUsage:['地場配送','宅配'],existingVendor:'デンソーテン（ドラレコ）',challenges:['点呼業務の負担','法令対応'],notes:'BSS for ALC追加提案中'},
+    {id:'c3',name:'大分急送株式会社',industry:'一般貨物運送',region:'大分',fleetSize:45,contact:'鈴木 社長',phone:'097-000-3333',products:['BSS for ALC'],vehicleUsage:['地場配送'],existingVendor:'',challenges:['事故削減','コスト削減'],notes:'GrowthBOX興味あり'},
+    {id:'c4',name:'阿蘇運輸株式会社',industry:'タンクローリー',region:'熊本',fleetSize:30,contact:'中村 専務',phone:'096-000-4444',products:[],vehicleUsage:['タンクローリー'],existingVendor:'自社管理',challenges:['2024年問題（労務管理）'],notes:'展示会で名刺交換。新規リード'},
+    {id:'c5',name:'長崎フレッシュ便',industry:'冷蔵・冷凍輸送',region:'長崎',fleetSize:60,contact:'高橋 取締役',phone:'095-000-5555',products:['GrowthBOX'],vehicleUsage:['冷凍冷蔵','地場配送'],existingVendor:'コムテック（ドラレコ）',challenges:['事故削減','DX推進'],notes:'ドラレコ入替検討中'},
+    {id:'c6',name:'西日本オートパーツ（代理店）',industry:'一般事業者（運送業以外）',region:'福岡',fleetSize:0,contact:'佐々木 営業部長',phone:'092-000-6666',products:[],vehicleUsage:[],existingVendor:'',challenges:[],notes:'販売代理店パートナー。九州エリア担当'},
+  ];
+  db.deals=[
+    {id:'d1',customer:'九州トランスポート株式会社',assignee:'田中',product:'GrowthBOX',stage:'見積提示',type:'アップセル',amount:1200000,vehicles:120,mrr:48000,initialCost:600000,plannedVehicles:120,targetProducts:['GrowthBOX'],salesChannel:'直販',nextAction:'見積確認・役員説明フォロー',nextDate:'2026-03-28',notes:'BSS導入済み。GrowthBOXで日報デジタル化を提案'},
+    {id:'d2',customer:'福岡物流センター株式会社',assignee:'山本',product:'BSS for ALC',stage:'受注',type:'アップセル',amount:480000,vehicles:80,mrr:32000,initialCost:240000,plannedVehicles:80,targetProducts:['BSS for ALC'],salesChannel:'直販',nextAction:'納品日確定・キッティング手配',nextDate:'2026-03-25',notes:'アルコール義務化対応で受注。納品準備へ'},
+    {id:'d3',customer:'阿蘇運輸株式会社',assignee:'田中',product:'GrowthBOX',stage:'商談中',type:'新規',amount:360000,vehicles:30,mrr:18000,initialCost:150000,plannedVehicles:30,targetProducts:['GrowthBOX','ドラレコ/デジタコ'],salesChannel:'直販',nextAction:'会社訪問・デモ実施',nextDate:'2026-03-28',notes:'展示会からのリード。デジタコセット提案'},
+    {id:'d4',customer:'長崎フレッシュ便',assignee:'佐藤',product:'ドラレコ/デジタコ',stage:'リード',type:'新規',amount:0,vehicles:60,mrr:0,initialCost:900000,plannedVehicles:60,targetProducts:['ドラレコ/デジタコ'],salesChannel:'代理店経由',nextAction:'代理店経由で資料送付',nextDate:'2026-03-24',notes:'西日本オートパーツ経由の紹介案件'},
+    {id:'d5',customer:'大分急送株式会社',assignee:'山本',product:'GrowthBOX',stage:'見積提示',type:'新規',amount:270000,vehicles:45,mrr:22500,initialCost:112500,plannedVehicles:45,targetProducts:['GrowthBOX'],salesChannel:'直販',nextAction:'社長稟議通過確認',nextDate:'2026-03-26',notes:'社長決裁待ち'},
+    {id:'d6',customer:'福岡物流センター株式会社',assignee:'山本',product:'BSS for ALC',stage:'納品・機器設定待ち',type:'アップセル',amount:480000,vehicles:80,mrr:32000,initialCost:240000,plannedVehicles:80,targetProducts:['BSS for ALC'],salesChannel:'直販',nextAction:'アルコールチェッカー80台キッティング→発送',nextDate:'2026-03-30',notes:'受注済み。機器納品・初期設定対応中'},
+  ];
+  db.activities=[
+    {id:'a1',customer:'福岡物流センター株式会社',type:'✅',content:'BSS for ALC 80台分の契約締結。納品日4/1で調整中。',date:'2026-03-22',assignee:'山本'},
+    {id:'a2',customer:'九州トランスポート株式会社',type:'💻',content:'GrowthBOXデモ実施。関心高く見積依頼を受けた。',date:'2026-03-15',assignee:'田中'},
+    {id:'a3',customer:'阿蘇運輸株式会社',type:'📞',content:'アポ取得。3月28日14時訪問予定。デジタコセット提案も検討。',date:'2026-03-12',assignee:'田中'},
+    {id:'a4',customer:'西日本オートパーツ（代理店）',type:'🎓',content:'販売店向け勉強会実施。GrowthBOX・BSS for ALCの最新機能と販売トークを共有。参加者8名。',date:'2026-03-18',assignee:'佐藤'},
+    {id:'a5',customer:'西日本オートパーツ（代理店）',type:'🎓',content:'ドラレコ/デジタコ新製品の販売店向け勉強会。デモ機3台を代理店に貸出し。',date:'2026-03-10',assignee:'佐藤'},
+  ];
+}
+
+// ═══════════════════════════════════════════════
+//  ユーティリティ
+// ═══════════════════════════════════════════════
+const today=()=>new Date().toISOString().split('T')[0];
+function formatMoney(n){if(!n||n===0)return'未定';if(n>=100000000)return(n/100000000).toFixed(1)+'億円';if(n>=10000000)return(n/10000000).toFixed(1)+'千万円';if(n>=10000)return Math.round(n/10000)+'万円';return n.toLocaleString()+'円';}
+function dateClass(d){if(!d)return'';const t=today();if(d<t)return'overdue';const soon=new Date(Date.now()+3*86400000).toISOString().split('T')[0];if(d<=soon)return'soon';return'';}
+function destroyCharts(){Object.values(chartInstances).forEach(c=>{try{c.destroy();}catch(e){}});chartInstances={};}
+
+// ── 当月KPI集計 ──
+function calcMonthlyKPI(){
+  const ym=today().slice(0,7);
+  const wonThisMonth=db.deals.filter(d=>['受注','納品・機器設定待ち','稼働開始'].includes(d.stage)&&d.createdAt&&d.createdAt>=ym);
+  const totalMRR=wonThisMonth.reduce((s,d)=>s+(d.mrr||0),0);
+  const totalVehicles=wonThisMonth.reduce((s,d)=>s+(d.plannedVehicles||0),0);
+  return{totalMRR,totalVehicles,wonCount:wonThisMonth.length};
+}
+
+// ═══════════════════════════════════════════════
+//  ルーティング
+// ═══════════════════════════════════════════════
+function navigate(view,filterProduct){
+  currentView=view; if(filterProduct!==undefined)quickFilterProduct=filterProduct;
+  document.querySelectorAll('nav a[data-view]').forEach(a=>a.classList.toggle('active',a.dataset.view===view));
+  ['pnav-gbc','pnav-alc','pnav-hw'].forEach(id=>{const el=document.getElementById(id);if(el)el.classList.remove('active');});
+  const titles={dashboard:'📊 ダッシュボード',deals:'💼 商談管理',customers:'🏢 顧客管理',activities:'📝 活動記録',reports:'📈 レポート'};
+  document.getElementById('page-title').textContent=titles[view]||view;
+  const addLabels={dashboard:'＋ 商談追加',deals:'＋ 商談追加',customers:'＋ 顧客追加',activities:'＋ 活動記録',reports:'＋ 商談追加'};
+  document.getElementById('add-btn').textContent=addLabels[view]||'＋ 新規追加';
+  closeSidebar();
+  ['dashboard','deals','customers','activities'].forEach(v=>{const el=document.getElementById('bnav-'+v);if(el)el.classList.toggle('active',v===view);});
+  destroyCharts(); renderView(view);
+}
+function openSidebar(){document.getElementById('sidebar').classList.add('sp-open');document.getElementById('sidebar-overlay').classList.add('active');}
+function closeSidebar(){document.getElementById('sidebar').classList.remove('sp-open');document.getElementById('sidebar-overlay').classList.remove('active');}
+function filterByProduct(product){
+  quickFilterProduct=product; closeSidebar();
+  document.querySelectorAll('nav a').forEach(a=>a.classList.remove('active'));
+  const m={'GrowthBOX':'pnav-gbc','BSS for ALC':'pnav-alc','ドラレコ/デジタコ':'pnav-hw'};
+  const el=document.getElementById(m[product]);if(el)el.classList.add('active');
+  document.getElementById('page-title').textContent='💼 商談管理 ― '+product;
+  currentView='deals'; destroyCharts(); renderView('deals');
+}
+function openAddModal(){if(currentView==='customers')openCustomerModal();else if(currentView==='activities')openActivityModal();else openDealModal();}
+function renderView(v){const c=document.getElementById('content');switch(v){case'dashboard':c.innerHTML=renderDashboard();initDashboardCharts();break;case'deals':c.innerHTML=renderDeals();break;case'customers':c.innerHTML=renderCustomers();break;case'activities':c.innerHTML=renderActivities();break;case'reports':c.innerHTML=renderReports();initReportCharts();break;}}
+
+// ═══════════════════════════════════════════════
+//  ダッシュボード — 動的KPI（今月MRR・予定車両数）
+// ═══════════════════════════════════════════════
+function renderDashboard(){
+  const totalDeals=db.deals.length;
+  const thisMonth=db.deals.filter(d=>d.createdAt&&d.createdAt>=today().slice(0,7)).length;
+  const pipeline=db.deals.filter(d=>!['受注','納品・機器設定待ち','稼働開始'].includes(d.stage)).reduce((s,d)=>s+(d.amount||0),0);
+  const mk=calcMonthlyKPI();
+  const weekLater=new Date(Date.now()+7*86400000).toISOString().split('T')[0];
+  const upcoming=db.deals.filter(d=>d.nextDate&&d.nextDate<=weekLater&&!['稼働開始'].includes(d.stage)).sort((a,b)=>a.nextDate.localeCompare(b.nextDate)).slice(0,6);
+  const recentActs=[...db.activities].sort((a,b)=>b.date.localeCompare(a.date)).slice(0,4);
+
+  return `
+  <div class="kpi-grid" style="grid-template-columns:repeat(6,1fr);">
+    <div class="kpi-card"><div class="kpi-label">💼 総商談数</div><div class="kpi-value">${totalDeals}</div><div class="kpi-sub">今月新規 ${thisMonth}件</div></div>
+    <div class="kpi-card orange"><div class="kpi-label">💰 パイプライン</div><div class="kpi-value">${formatMoney(pipeline)}</div><div class="kpi-sub">進行中商談の合計</div></div>
+    <div class="kpi-card green"><div class="kpi-label">✅ 今月受注</div><div class="kpi-value">${mk.wonCount}件</div><div class="kpi-sub">${formatMoney(mk.totalMRR*12)}/年</div></div>
+    <div class="kpi-card purple"><div class="kpi-label">💳 今月獲得MRR</div><div class="kpi-value">${formatMoney(mk.totalMRR)}</div><div class="kpi-sub">月額SaaS利用料合計</div></div>
+    <div class="kpi-card cyan"><div class="kpi-label">🚛 獲得予定車両数</div><div class="kpi-value">${mk.totalVehicles}台</div><div class="kpi-sub">今月受注分</div></div>
+    <div class="kpi-card red"><div class="kpi-label">🏢 登録顧客数</div><div class="kpi-value">${db.customers.length}社</div><div class="kpi-sub">既存導入 ${db.customers.filter(c=>(c.products||[]).length>0).length}社</div></div>
+  </div>
+  <div class="charts-row">
+    <div class="card"><div class="card-title">パイプライン ステージ別</div><canvas id="ch-pipeline" height="210"></canvas></div>
+    <div class="card"><div class="card-title">製品別 商談数</div><canvas id="ch-products" height="210"></canvas></div>
+  </div>
+  <div class="charts-row">
+    <div class="card">
+      <div class="card-title">⏰ 今後7日のアクション<span style="font-size:11px;color:var(--text-secondary);font-weight:400;">${upcoming.length}件</span></div>
+      ${upcoming.length===0?'<div class="empty-state"><div class="empty-state-text">直近のアクション予定はありません</div></div>'
+      :upcoming.map(d=>`<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border);">
+        <div style="text-align:center;min-width:36px;"><div class="deal-card-date ${dateClass(d.nextDate)}" style="font-size:13px;font-weight:700;">${d.nextDate?d.nextDate.slice(5):'-'}</div></div>
+        <div style="flex:1;min-width:0;"><div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${d.customer}</div><div style="font-size:12px;color:var(--text-secondary);">${d.nextAction||'-'}</div></div>
+        <span class="ptag ${ptagClass(d.product)}">${d.product}</span>
+        <span class="badge ${BADGE_CLASS[d.stage]||''}">${d.stage}</span>
+      </div>`).join('')}
+    </div>
+    <div class="card">
+      <div class="card-title">最近の活動</div>
+      ${recentActs.length===0?'<div class="empty-state"><div class="empty-state-text">活動記録がありません</div></div>'
+      :recentActs.map(a=>`<div style="display:flex;gap:10px;padding:9px 0;border-bottom:1px solid var(--border);">
+        <div style="font-size:20px;line-height:1;">${a.type}</div>
+        <div style="flex:1;min-width:0;"><div style="font-size:13px;font-weight:600;">${a.customer}</div><div style="font-size:12px;color:var(--text-secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${a.content}</div><div style="font-size:11px;color:#A0AEC0;">${a.date} ・ ${a.assignee}</div></div>
+      </div>`).join('')}
+    </div>
+  </div>`;
+}
+
+function initDashboardCharts(){
+  const stageCounts=STAGES.map(s=>db.deals.filter(d=>d.stage===s).length);
+  const c1=document.getElementById('ch-pipeline');
+  if(c1)chartInstances['pipeline']=new Chart(c1,{type:'bar',data:{labels:STAGES,datasets:[{label:'商談数',data:stageCounts,backgroundColor:STAGES.map(s=>STAGE_COLORS[s]+'BB'),borderColor:STAGES.map(s=>STAGE_COLORS[s]),borderWidth:1,borderRadius:5}]},options:{responsive:true,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,ticks:{stepSize:1}}}}});
+  const pCounts={};db.deals.forEach(d=>{pCounts[d.product]=(pCounts[d.product]||0)+1;});
+  const sorted=Object.entries(pCounts).sort((a,b)=>b[1]-a[1]);
+  const c2=document.getElementById('ch-products');
+  if(c2)chartInstances['products']=new Chart(c2,{type:'doughnut',data:{labels:sorted.map(p=>p[0]),datasets:[{data:sorted.map(p=>p[1]),backgroundColor:['#4299E1','#48BB78','#ED8936','#ECC94B','#9F7AEA','#FC8181','#38B2AC'],borderWidth:2,borderColor:'white'}]},options:{responsive:true,cutout:'60%',plugins:{legend:{position:'right',labels:{font:{size:11},boxWidth:12}}}}});
+}
+
+// ═══════════════════════════════════════════════
+//  商談管理（カンバン）— 6列
+// ═══════════════════════════════════════════════
+function renderDeals(){
+  const fProduct=document.getElementById('fs-product')?.value||quickFilterProduct||'';
+  const fType=document.getElementById('fs-type')?.value||'';
+  const fAssign=document.getElementById('fs-assign')?.value||'';
+  const fChannel=document.getElementById('fs-channel')?.value||'';
+  const search=document.getElementById('deal-search')?.value?.toLowerCase()||'';
+  let deals=[...db.deals];
+  if(fProduct)deals=deals.filter(d=>d.product===fProduct);
+  if(fType)deals=deals.filter(d=>d.type===fType);
+  if(fAssign)deals=deals.filter(d=>d.assignee===fAssign);
+  if(fChannel)deals=deals.filter(d=>d.salesChannel===fChannel);
+  if(search)deals=deals.filter(d=>d.customer.toLowerCase().includes(search)||d.product.toLowerCase().includes(search)||(d.notes||'').toLowerCase().includes(search));
+  const assignees=[...new Set(db.deals.map(d=>d.assignee).filter(Boolean))];
+
+  return `
+  <div class="filters">
+    <input type="text" id="deal-search" class="search-input" placeholder="🔍 検索" oninput="renderView('deals')">
+    <select class="filter-select" id="fs-product" onchange="quickFilterProduct='';renderView('deals')">
+      <option value="">全製品</option>
+      <optgroup label="SaaS">${SAAS_P.map(p=>`<option value="${p}" ${fProduct===p?'selected':''}>${p}</option>`).join('')}</optgroup>
+      <optgroup label="新サービス">${NEW_P.map(p=>`<option value="${p}" ${fProduct===p?'selected':''}>${p}</option>`).join('')}</optgroup>
+      <optgroup label="ハードウェア">${HW_P.map(p=>`<option value="${p}" ${fProduct===p?'selected':''}>${p}</option>`).join('')}</optgroup>
+    </select>
+    <select class="filter-select" id="fs-type" onchange="renderView('deals')">
+      <option value="">全種別</option><option value="新規" ${fType==='新規'?'selected':''}>新規</option><option value="アップセル" ${fType==='アップセル'?'selected':''}>アップセル</option>
+    </select>
+    <select class="filter-select" id="fs-channel" onchange="renderView('deals')">
+      <option value="">全チャネル</option><option value="直販" ${fChannel==='直販'?'selected':''}>直販</option><option value="代理店経由" ${fChannel==='代理店経由'?'selected':''}>代理店経由</option>
+    </select>
+    <select class="filter-select" id="fs-assign" onchange="renderView('deals')">
+      <option value="">全担当者</option>${assignees.map(a=>`<option value="${a}" ${fAssign===a?'selected':''}>${a}</option>`).join('')}
+    </select>
+    <span style="font-size:13px;color:var(--text-secondary);">${deals.length}件</span>
+    ${fProduct?`<span class="badge badge-talk" style="cursor:pointer;" onclick="quickFilterProduct='';renderView('deals')">✕ ${fProduct}</span>`:''}
+  </div>
+  <div class="kanban-board">
+    ${STAGES.map(stage=>{
+      const sd=deals.filter(d=>d.stage===stage);
+      const mrrSum=sd.reduce((s,d)=>s+(d.mrr||0),0);
+      return `<div class="kanban-col">
+        <div class="kanban-col-header">
+          <span class="kanban-col-title" style="color:${STAGE_COLORS[stage]};">${stage}</span>
+          <span class="kanban-count">${sd.length}</span>
+        </div>
+        ${mrrSum>0?`<div class="kanban-amount">MRR ${formatMoney(mrrSum)}</div>`:''}
+        ${sd.length===0?'<div style="text-align:center;padding:20px 0;color:#CBD5E0;font-size:12px;">商談なし</div>':''}
+        ${sd.map(d=>`<div class="deal-card ${STAGE_CLASS[d.stage]||''}" onclick="showDealDetail('${d.id}')">
+          <div class="deal-card-company">${d.customer}</div>
+          <div style="margin:3px 0 4px;">
+            ${(d.targetProducts||[d.product]).map(tp=>`<span class="ptag ${ptagClass(tp)}">${tp}</span>`).join('')}
+            <span class="badge ${d.type==='アップセル'?'badge-up':'badge-new'}" style="font-size:10px;">${d.type}</span>
+            ${d.salesChannel==='代理店経由'?'<span class="ptag ptag-channel">代理店</span>':''}
+          </div>
+          ${d.mrr?`<div class="deal-card-mrr">💳 MRR ${formatMoney(d.mrr)}</div>`:''}
+          ${d.initialCost?`<div class="deal-card-hw">🔧 初期 ${formatMoney(d.initialCost)}</div>`:''}
+          ${d.plannedVehicles?`<div style="font-size:10px;color:#718096;">🚛 ${d.plannedVehicles}台</div>`:''}
+          <div class="deal-card-bottom">
+            <span class="deal-card-assignee">👤 ${d.assignee}</span>
+          </div>
+          ${d.nextDate?`<div class="deal-card-date ${dateClass(d.nextDate)}" style="margin-top:4px;">📅 ${d.nextDate}</div>`:''}
+        </div>`).join('')}
+      </div>`;
+    }).join('')}
+  </div>`;
+}
+
+// ═══════════════════════════════════════════════
+//  顧客管理
+// ═══════════════════════════════════════════════
+function renderCustomers(){
+  const search=document.getElementById('c-search')?.value?.toLowerCase()||'';
+  let custs=[...db.customers];
+  if(search)custs=custs.filter(c=>c.name.toLowerCase().includes(search)||(c.region||'').toLowerCase().includes(search)||(c.industry||'').toLowerCase().includes(search));
+  return `
+  <div class="filters"><input type="text" id="c-search" class="search-input" placeholder="🔍 検索" oninput="renderView('customers')" style="width:250px;"><span style="font-size:13px;color:var(--text-secondary);">${custs.length}社</span></div>
+  <div class="card"><div class="table-scroll"><table class="data-table"><thead><tr><th>会社名</th><th>業種</th><th>地域</th><th>台数</th><th>導入済み製品</th><th>課題</th><th>商談</th><th>操作</th></tr></thead><tbody>
+  ${custs.length===0?'<tr><td colspan="8" style="text-align:center;padding:30px;color:var(--text-secondary);">顧客データがありません</td></tr>':''}
+  ${custs.map(c=>{const dealCnt=db.deals.filter(d=>d.customer===c.name).length;return `<tr>
+    <td><strong>${c.name}</strong>${c.contact?`<br><span style="font-size:11px;color:var(--text-secondary);">👤 ${c.contact}${c.phone?' / '+c.phone:''}</span>`:''}${c.existingVendor?`<br><span style="font-size:10px;color:#A0AEC0;">🔧 ${c.existingVendor}</span>`:''}</td>
+    <td style="font-size:12px;">${c.industry||'-'}</td>
+    <td><span class="badge" style="background:#EDF2F7;color:#4A5568;">${c.region||'-'}</span></td>
+    <td style="text-align:center;">${c.fleetSize?c.fleetSize+'台':'-'}</td>
+    <td>${(c.products||[]).map(p=>`<span class="ptag ${ptagClass(p)}">${p}</span>`).join('')||'<span style="color:#CBD5E0;font-size:12px;">未導入</span>'}</td>
+    <td>${(c.challenges||[]).map(ch=>`<span class="badge" style="background:#FFF5F5;color:#C53030;font-size:10px;">${ch}</span>`).join(' ')||'-'}</td>
+    <td style="text-align:center;"><span class="badge badge-talk">${dealCnt}件</span></td>
+    <td><button class="btn btn-secondary btn-xs" onclick="openCustomerModal('${c.id}')">✏</button> <button class="btn btn-danger btn-xs" onclick="deleteCustomer('${c.id}')">🗑</button></td>
+  </tr>`;}).join('')}
+  </tbody></table></div></div>`;
+}
+
+// ═══════════════════════════════════════════════
+//  活動記録
+// ═══════════════════════════════════════════════
+function renderActivities(){
+  const search=document.getElementById('act-search')?.value?.toLowerCase()||'';
+  let acts=[...db.activities].sort((a,b)=>b.date.localeCompare(a.date));
+  if(search)acts=acts.filter(a=>a.customer.toLowerCase().includes(search)||a.content.toLowerCase().includes(search));
+  return `
+  <div class="filters"><input type="text" id="act-search" class="search-input" placeholder="🔍 検索" oninput="renderView('activities')" style="width:250px;"><span style="font-size:13px;color:var(--text-secondary);">${acts.length}件</span></div>
+  <div style="max-width:750px;">
+    ${acts.length===0?'<div class="empty-state"><div class="empty-state-icon">📝</div><div class="empty-state-text">活動記録がありません</div></div>'
+    :acts.map(a=>`<div class="timeline-item">
+      <div class="timeline-dot">${a.type}</div>
+      <div class="timeline-content">
+        <div class="timeline-header"><span class="timeline-customer">${a.customer}</span>
+          <div class="timeline-meta"><span>👤 ${a.assignee||'-'}</span><span>📅 ${a.date}</span><button class="btn btn-danger btn-xs" onclick="deleteActivity('${a.id}')">🗑</button></div>
+        </div>
+        <div class="timeline-body">${a.content}</div>
+      </div>
+    </div>`).join('')}
+  </div>`;
+}
+
+// ═══════════════════════════════════════════════
+//  レポート
+// ═══════════════════════════════════════════════
+function renderReports(){
+  const closedStages=['受注','納品・機器設定待ち','稼働開始'];
+  const closedDeals=db.deals.filter(d=>closedStages.includes(d.stage));
+  const closedMRR=closedDeals.reduce((s,d)=>s+(d.mrr||0),0);
+  const closedVehicles=closedDeals.reduce((s,d)=>s+(d.plannedVehicles||0),0);
+  const directCnt=db.deals.filter(d=>d.salesChannel==='直販').length;
+  const dealerCnt=db.deals.filter(d=>d.salesChannel==='代理店経由').length;
+  const studySessions=db.activities.filter(a=>a.type==='🎓').length;
+
+  return `
+  <div class="kpi-grid" style="grid-template-columns:repeat(4,1fr);">
+    <div class="kpi-card green"><div class="kpi-label">💳 受注MRR合計</div><div class="kpi-value">${formatMoney(closedMRR)}</div><div class="kpi-sub">${closedDeals.length}件の受注</div></div>
+    <div class="kpi-card"><div class="kpi-label">🚛 受注導入台数</div><div class="kpi-value">${closedVehicles}台</div><div class="kpi-sub">100億目標への積み上げ</div></div>
+    <div class="kpi-card orange"><div class="kpi-label">📊 直販 vs 代理店</div><div class="kpi-value">${directCnt} / ${dealerCnt}</div><div class="kpi-sub">直販 / 代理店（件数）</div></div>
+    <div class="kpi-card purple"><div class="kpi-label">🎓 勉強会実施数</div><div class="kpi-value">${studySessions}回</div><div class="kpi-sub">販売店向け勉強会</div></div>
+  </div>
+  <div class="charts-row">
+    <div class="card"><div class="card-title">製品別 MRR</div><canvas id="ch-rp-amt" height="260"></canvas></div>
+    <div class="card"><div class="card-title">ステージ別 MRR構成</div><canvas id="ch-rp-stage" height="260"></canvas></div>
+  </div>`;
+}
+
+function initReportCharts(){
+  const byP={};ALL_P.forEach(p=>{byP[p]={mrr:0};});
+  db.deals.forEach(d=>{if(!byP[d.product])byP[d.product]={mrr:0};byP[d.product].mrr+=(d.mrr||0);});
+  const actProd=ALL_P.filter(p=>byP[p].mrr>0);
+  const c1=document.getElementById('ch-rp-amt');
+  if(c1)chartInstances['rp-amt']=new Chart(c1,{type:'bar',data:{labels:actProd,datasets:[{label:'MRR（円）',data:actProd.map(p=>byP[p].mrr),backgroundColor:'#805AD5AA',borderColor:'#805AD5',borderWidth:1,borderRadius:4}]},options:{responsive:true,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,ticks:{callback:v=>formatMoney(v)}}}}});
+  const byStage=STAGES.map(s=>db.deals.filter(d=>d.stage===s).reduce((sum,d)=>sum+(d.mrr||0),0));
+  const c2=document.getElementById('ch-rp-stage');
+  if(c2)chartInstances['rp-stage']=new Chart(c2,{type:'doughnut',data:{labels:STAGES,datasets:[{data:byStage,backgroundColor:STAGES.map(s=>STAGE_COLORS[s]+'CC'),borderWidth:2,borderColor:'white'}]},options:{responsive:true,cutout:'55%',plugins:{legend:{position:'bottom',labels:{font:{size:11},boxWidth:12}},tooltip:{callbacks:{label:ctx=>' '+ctx.label+': '+formatMoney(ctx.raw)}}}}});
+}
+
+// ═══════════════════════════════════════════════
+//  商談 CRUD
+// ═══════════════════════════════════════════════
+function openDealModal(id=null){
+  editingDealId=id;
+  document.getElementById('deal-modal-title').textContent=id?'商談を編集':'商談を追加';
+  document.getElementById('dl-customers').innerHTML=db.customers.map(c=>`<option value="${c.name}">`).join('');
+  const d=id?db.deals.find(x=>x.id===id):null;
+  document.getElementById('d-customer').value=d?.customer||'';
+  document.getElementById('d-assignee').value=d?.assignee||'';
+  document.getElementById('d-product').value=d?.product||'GrowthBOX';
+  document.getElementById('d-stage').value=d?.stage||'リード';
+  document.getElementById('d-type').value=d?.type||'新規';
+  document.getElementById('d-channel').value=d?.salesChannel||'直販';
+  document.getElementById('d-mrr').value=d?.mrr||'';
+  document.getElementById('d-initial-cost').value=d?.initialCost||'';
+  document.getElementById('d-planned-vehicles').value=d?.plannedVehicles||'';
+  document.getElementById('d-next-date').value=d?.nextDate||today();
+  document.getElementById('d-next-action').value=d?.nextAction||'';
+  document.getElementById('d-notes').value=d?.notes||'';
+  document.querySelectorAll('.dp-check').forEach(cb=>{cb.checked=(d?.targetProducts||[]).includes(cb.value);});
+  document.getElementById('deal-modal').classList.add('active');
+}
+
+async function saveDeal(){
+  const customer=document.getElementById('d-customer').value.trim();
+  if(!customer){alert('顧客名を入力してください');return;}
+  const targetProducts=[...document.querySelectorAll('.dp-check:checked')].map(cb=>cb.value);
+  const deal={
+    id:editingDealId||'d'+Date.now(), customer,
+    assignee:document.getElementById('d-assignee').value.trim(),
+    product:document.getElementById('d-product').value,
+    stage:document.getElementById('d-stage').value,
+    type:document.getElementById('d-type').value,
+    salesChannel:document.getElementById('d-channel').value,
+    amount:0,vehicles:0,
+    mrr:parseInt(document.getElementById('d-mrr').value)||0,
+    initialCost:parseInt(document.getElementById('d-initial-cost').value)||0,
+    plannedVehicles:parseInt(document.getElementById('d-planned-vehicles').value)||0,
+    targetProducts,
+    nextDate:document.getElementById('d-next-date').value,
+    nextAction:document.getElementById('d-next-action').value,
+    notes:document.getElementById('d-notes').value,
+    createdAt:editingDealId?(db.deals.find(x=>x.id===editingDealId)?.createdAt||today()):today(),
+    updatedAt:today(),
+  };
+  deal.amount=(deal.mrr*12)+(deal.initialCost); deal.vehicles=deal.plannedVehicles;
+
+  if(editingDealId){const idx=db.deals.findIndex(x=>x.id===editingDealId);if(idx!==-1)db.deals[idx]=deal;}else db.deals.unshift(deal);
+  if(!DEMO_MODE&&isConfigured()){try{showLoading(true,'保存中...');if(editingDealId){const{properties}=dealToNotion(deal);await nUpdate(editingDealId,properties);}else{const page=await nCreate(dealToNotion(deal));db.deals[0].id=page.id;}}catch(e){alert('保存エラー:\n'+e.message);}finally{showLoading(false);}}
+  closeModal('deal-modal');renderView(currentView);
+}
+
+function showDealDetail(id){
+  const d=db.deals.find(x=>x.id===id);if(!d)return;
+  document.getElementById('detail-modal-title').textContent=d.customer+' ／ '+d.product;
+  document.getElementById('deal-detail-content').innerHTML=`
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px;">
+      <div><div class="form-label">顧客名</div><strong>${d.customer}</strong></div>
+      <div><div class="form-label">担当者</div><strong>${d.assignee}</strong></div>
+      <div><div class="form-label">対象製品</div>${(d.targetProducts||[d.product]).map(p=>`<span class="ptag ${ptagClass(p)}">${p}</span>`).join('')}</div>
+      <div><div class="form-label">ステージ</div><span class="badge ${BADGE_CLASS[d.stage]||''}">${d.stage}</span></div>
+      <div><div class="form-label">販売チャネル</div><span class="badge ${d.salesChannel==='代理店経由'?'badge-up':'badge-new'}">${d.salesChannel||'直販'}</span></div>
+      <div><div class="form-label">種別</div><span class="badge ${d.type==='アップセル'?'badge-up':'badge-new'}">${d.type}</span></div>
+      <div><div class="form-label">💳 MRR（月額）</div><strong style="color:#805AD5;">${formatMoney(d.mrr)}</strong></div>
+      <div><div class="form-label">🔧 初期費用</div><strong style="color:#0891B2;">${formatMoney(d.initialCost)}</strong></div>
+      <div><div class="form-label">🚛 予定車両数</div><strong>${d.plannedVehicles||'-'}台</strong></div>
+      <div><div class="form-label">登録日</div>${d.createdAt}</div>
+    </div>
+    ${d.nextAction||d.nextDate?`<div style="background:#FFFAF0;border:1px solid #FEEBC8;border-radius:8px;padding:12px;margin-bottom:12px;">
+      <div style="font-size:12px;font-weight:700;color:#C05621;margin-bottom:4px;">⏰ 次回アクション</div>
+      <div style="font-size:14px;font-weight:600;">${d.nextAction||'-'}</div>
+      <div class="deal-card-date ${dateClass(d.nextDate)}" style="font-size:13px;margin-top:3px;">📅 ${d.nextDate||'-'}</div>
+    </div>`:''}
+    ${d.notes?`<div style="background:#F7FAFC;border-radius:8px;padding:12px;margin-bottom:12px;"><div style="font-size:12px;font-weight:700;color:var(--text-secondary);margin-bottom:4px;">📝 メモ</div><div style="font-size:13px;line-height:1.6;">${d.notes}</div></div>`:''}
+    <div><div class="form-label" style="margin-bottom:8px;">ステージを変更：</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;">
+        ${STAGES.map(s=>`<button class="btn btn-sm ${d.stage===s?'btn-primary':'btn-secondary'}" style="border-left:3px solid ${STAGE_COLORS[s]};" onclick="moveDealStage('${d.id}','${s}')">${s}</button>`).join('')}
+      </div>
+    </div>`;
+  document.getElementById('detail-edit-btn').onclick=()=>{closeModal('deal-detail-modal');openDealModal(id);};
+  document.getElementById('detail-delete-btn').onclick=()=>{if(confirm('この商談を削除しますか？')){db.deals=db.deals.filter(x=>x.id!==id);closeModal('deal-detail-modal');renderView(currentView);if(!DEMO_MODE&&isConfigured())nArchive(id).catch(e=>alert('削除エラー:\n'+e.message));}};
+  document.getElementById('deal-detail-modal').classList.add('active');
+}
+
+function moveDealStage(id,stage){
+  const d=db.deals.find(x=>x.id===id);if(!d)return;
+  d.stage=stage;d.updatedAt=today();showDealDetail(id);renderView(currentView);
+  if(!DEMO_MODE&&isConfigured())nUpdate(id,{'ステージ':{select:{name:stage}}}).catch(e=>alert('ステージ更新エラー:\n'+e.message));
+}
+
+// ═══════════════════════════════════════════════
+//  顧客 CRUD
+// ═══════════════════════════════════════════════
+function openCustomerModal(id=null){
+  editingCustomerId=id;
+  document.getElementById('customer-modal-title').textContent=id?'顧客を編集':'顧客を追加';
+  document.querySelectorAll('#customer-modal input[type=checkbox]').forEach(cb=>cb.checked=false);
+  const c=id?db.customers.find(x=>x.id===id):null;
+  document.getElementById('c-name').value=c?.name||'';
+  document.getElementById('c-industry').value=c?.industry||'一般貨物運送';
+  document.getElementById('c-region').value=c?.region||'熊本';
+  document.getElementById('c-fleet-size').value=c?.fleetSize||'';
+  document.getElementById('c-contact').value=c?.contact||'';
+  document.getElementById('c-phone').value=c?.phone||'';
+  document.getElementById('c-notes').value=c?.notes||'';
+  document.getElementById('c-existing-vendor').value=c?.existingVendor||'';
+  (c?.products||[]).forEach(p=>{const cb=document.querySelector(`.cp-check[value="${p}"]`);if(cb)cb.checked=true;});
+  (c?.vehicleUsage||[]).forEach(v=>{const cb=document.querySelector(`.cv-check[value="${v}"]`);if(cb)cb.checked=true;});
+  (c?.challenges||[]).forEach(ch=>{const cb=document.querySelector(`.cc-check[value="${ch}"]`);if(cb)cb.checked=true;});
+  document.getElementById('customer-modal').classList.add('active');
+}
+async function saveCustomer(){
+  const name=document.getElementById('c-name').value.trim();if(!name){alert('会社名を入力してください');return;}
+  const products=[...document.querySelectorAll('.cp-check:checked')].map(cb=>cb.value);
+  const vehicleUsage=[...document.querySelectorAll('.cv-check:checked')].map(cb=>cb.value);
+  const challenges=[...document.querySelectorAll('.cc-check:checked')].map(cb=>cb.value);
+  const c={id:editingCustomerId||'c'+Date.now(),name,industry:document.getElementById('c-industry').value,region:document.getElementById('c-region').value,fleetSize:parseInt(document.getElementById('c-fleet-size').value)||0,contact:document.getElementById('c-contact').value,phone:document.getElementById('c-phone').value,products,vehicleUsage,existingVendor:document.getElementById('c-existing-vendor').value,challenges,notes:document.getElementById('c-notes').value,createdAt:editingCustomerId?(db.customers.find(x=>x.id===editingCustomerId)?.createdAt||today()):today()};
+  if(editingCustomerId){const idx=db.customers.findIndex(x=>x.id===editingCustomerId);if(idx!==-1)db.customers[idx]=c;}else db.customers.unshift(c);
+  if(!DEMO_MODE&&isConfigured()){try{showLoading(true,'保存中...');if(editingCustomerId){const{properties}=customerToNotion(c);await nUpdate(editingCustomerId,properties);}else{const page=await nCreate(customerToNotion(c));db.customers[0].id=page.id;}}catch(e){alert('保存エラー:\n'+e.message);}finally{showLoading(false);}}
+  closeModal('customer-modal');renderView(currentView);
+}
+function deleteCustomer(id){if(confirm('この顧客を削除しますか？')){db.customers=db.customers.filter(c=>c.id!==id);renderView(currentView);if(!DEMO_MODE&&isConfigured())nArchive(id).catch(e=>alert('削除エラー:\n'+e.message));}}
+
+// ═══════════════════════════════════════════════
+//  活動 CRUD
+// ═══════════════════════════════════════════════
+function openActivityModal(){
+  const dl=document.getElementById('dl-act-customers');
+  const names=[...new Set([...db.customers.map(c=>c.name),...db.deals.map(d=>d.customer)])];
+  dl.innerHTML=names.map(n=>`<option value="${n}">`).join('');
+  document.getElementById('a-customer').value='';document.getElementById('a-content').value='';
+  document.getElementById('a-date').value=today();document.getElementById('a-assignee').value='';
+  document.getElementById('activity-modal').classList.add('active');
+}
+async function saveActivity(){
+  const customer=document.getElementById('a-customer').value.trim();
+  const content=document.getElementById('a-content').value.trim();
+  if(!customer||!content){alert('顧客名と活動内容を入力してください');return;}
+  const act={id:'a'+Date.now(),customer,type:document.getElementById('a-type').value,content,date:document.getElementById('a-date').value,assignee:document.getElementById('a-assignee').value};
+  db.activities.unshift(act);
+  if(!DEMO_MODE&&isConfigured()){try{showLoading(true,'保存中...');const page=await nCreate(activityToNotion(act));db.activities[0].id=page.id;}catch(e){alert('保存エラー:\n'+e.message);}finally{showLoading(false);}}
+  closeModal('activity-modal');renderView(currentView);
+}
+function deleteActivity(id){if(confirm('この活動記録を削除しますか？')){db.activities=db.activities.filter(a=>a.id!==id);renderView(currentView);if(!DEMO_MODE&&isConfigured())nArchive(id).catch(e=>alert('削除エラー:\n'+e.message));}}
+
+function closeModal(id){document.getElementById(id).classList.remove('active');}
+
+// ═══════════════════════════════════════════════
+//  名刺OCR（既存機能）
+// ═══════════════════════════════════════════════
+let cameraStream=null,cardImageSrc=null;
+function openCardOCR(){resetCardOCR();document.getElementById('card-ocr-modal').classList.add('active');switchOcrTab('upload');}
+function closeCardModal(){stopCamera();document.getElementById('card-ocr-modal').classList.remove('active');}
+function switchOcrTab(tab){document.getElementById('ocr-panel-upload').style.display=tab==='upload'?'':'none';document.getElementById('ocr-panel-camera').style.display=tab==='camera'?'':'none';document.getElementById('ocr-tab-upload').className='btn btn-sm '+(tab==='upload'?'btn-primary':'btn-secondary');document.getElementById('ocr-tab-camera').className='btn btn-sm '+(tab==='camera'?'btn-primary':'btn-secondary');if(tab!=='camera')stopCamera();}
+function handleCardDrop(e){e.preventDefault();document.getElementById('card-drop-zone').classList.remove('dragover');const file=e.dataTransfer.files[0];if(file&&file.type.startsWith('image/'))handleCardFile(file);}
+function handleCardFile(file){if(!file)return;const reader=new FileReader();reader.onload=e=>showCardPreview(e.target.result);reader.readAsDataURL(file);}
+function showCardPreview(src){cardImageSrc=src;document.getElementById('card-preview-img').src=src;document.getElementById('card-preview-area').style.display='';document.getElementById('card-drop-zone').style.display='none';document.getElementById('ocr-panel-camera').style.display='none';}
+async function startCamera(){try{cameraStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}});const v=document.getElementById('ocr-video');v.srcObject=cameraStream;v.style.display='';document.getElementById('camera-placeholder').style.display='none';document.getElementById('btn-camera-start').style.display='none';document.getElementById('btn-camera-shoot').style.display='';document.getElementById('btn-camera-stop').style.display='';}catch(err){alert('カメラにアクセスできません: '+err.message);}}
+function stopCamera(){if(cameraStream){cameraStream.getTracks().forEach(t=>t.stop());cameraStream=null;}const v=document.getElementById('ocr-video');if(v){v.style.display='none';v.srcObject=null;}const ph=document.getElementById('camera-placeholder');if(ph)ph.style.display='';const bs=document.getElementById('btn-camera-start');if(bs)bs.style.display='';const bsh=document.getElementById('btn-camera-shoot');if(bsh)bsh.style.display='none';const bst=document.getElementById('btn-camera-stop');if(bst)bst.style.display='none';}
+function shootCamera(){const v=document.getElementById('ocr-video');const c=document.getElementById('card-canvas');c.width=v.videoWidth;c.height=v.videoHeight;c.getContext('2d').drawImage(v,0,0);stopCamera();showCardPreview(c.toDataURL('image/png'));}
+async function startOCR(){if(!cardImageSrc)return;document.getElementById('ocr-step-input').style.display='none';document.getElementById('ocr-step-processing').style.display='';document.getElementById('ocr-step-result').style.display='none';try{const{data:{text}}=await Tesseract.recognize(cardImageSrc,'jpn+eng',{logger:m=>{if(m.status==='recognizing text'){const pct=Math.round((m.progress||0)*100);document.getElementById('ocr-progress-fill').style.width=pct+'%';document.getElementById('ocr-status-text').textContent=`テキスト認識中... ${pct}%`;}else{const sm={'loading tesseract core':'OCRエンジン読込中...','initializing tesseract':'初期化中...','loading language traineddata':'日本語データ読込中...','initializing api':'API初期化中...'};document.getElementById('ocr-status-text').textContent=sm[m.status]||m.status;}}});document.getElementById('ocr-raw-text').value=text;parseBusinessCard(text);document.getElementById('ocr-step-processing').style.display='none';document.getElementById('ocr-step-result').style.display='';}catch(err){document.getElementById('ocr-step-processing').style.display='none';document.getElementById('ocr-step-input').style.display='';document.getElementById('card-preview-area').style.display='';alert('OCR処理エラー:\n'+err.message);}}
+function parseBusinessCard(text){const lines=text.split(/[\n\r]+/).map(l=>l.trim()).filter(l=>l.length>0);const telPat=/(?:TEL|電話|Tel)?[：:]?\s*((?:0\d{1,4}[-\s・]?\d{1,4}[-\s・]?\d{4}|\d{11}))/gi;const faxPat=/(?:FAX|Fax)[：:]?\s*((?:0\d{1,4}[-\s・]?\d{1,4}[-\s・]?\d{4}|\d{11}))/gi;const phones=[],faxes=[];let m;while((m=telPat.exec(text))!==null)phones.push(m[1].trim());while((m=faxPat.exec(text))!==null)faxes.push(m[1].trim());const telOnly=phones.filter(p=>!faxes.includes(p));const emailMatch=text.match(/[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/);const companyLine=lines.find(l=>/(株式会社|有限会社|合同会社|㈱)/.test(l))||'';const titleLine=lines.find(l=>/(代表|取締役|社長|部長|課長|所長)/i.test(l)&&!/(株式会社)/.test(l))||'';const nameReg=/^[\u4E00-\u9FFF\u30A0-\u30FF\u3040-\u309F]{2,6}[\s　]+[\u4E00-\u9FFF\u30A0-\u30FF\u3040-\u309F]{1,5}$/;let nameLine=lines.find(l=>nameReg.test(l))||'';if(!nameLine)nameLine=lines.find(l=>/^[\u4E00-\u9FFF]{2,5}$/.test(l)&&!/(会社|社団|法人)/.test(l))||'';const addressLine=lines.find(l=>/〒|[\u90FD\u9053\u5E9C\u770C]|丁目|番地/.test(l))||'';document.getElementById('ocr-company').value=companyLine;document.getElementById('ocr-contact').value=nameLine;document.getElementById('ocr-phone').value=telOnly[0]||phones[0]||'';document.getElementById('ocr-fax').value=faxes[0]||'';document.getElementById('ocr-email').value=emailMatch?emailMatch[0]:'';document.getElementById('ocr-title').value=titleLine;document.getElementById('ocr-address').value=addressLine;}
+function reParseOCR(){parseBusinessCard(document.getElementById('ocr-raw-text').value);}
+function applyCardData(){const company=document.getElementById('ocr-company').value.trim();const contact=document.getElementById('ocr-contact').value.trim();const phone=document.getElementById('ocr-phone').value.trim();const title=document.getElementById('ocr-title').value.trim();const email=document.getElementById('ocr-email').value.trim();const address=document.getElementById('ocr-address').value.trim();if(company)document.getElementById('c-name').value=company;const contactFull=[title,contact].filter(Boolean).join(' ');if(contactFull)document.getElementById('c-contact').value=contactFull;if(phone)document.getElementById('c-phone').value=phone;const extras=[address&&'住所: '+address,email&&'メール: '+email].filter(Boolean).join('\n');if(extras){const prev=document.getElementById('c-notes').value;document.getElementById('c-notes').value=prev?prev+'\n'+extras:extras;}closeCardModal();if(!document.getElementById('customer-modal').classList.contains('active'))openCustomerModal();}
+function resetCardOCR(){cardImageSrc=null;document.getElementById('ocr-step-input').style.display='';document.getElementById('ocr-step-processing').style.display='none';document.getElementById('ocr-step-result').style.display='none';document.getElementById('card-preview-area').style.display='none';document.getElementById('card-drop-zone').style.display='';document.getElementById('card-file-input').value='';document.getElementById('ocr-progress-fill').style.width='0%';document.getElementById('ocr-raw-text').value='';['ocr-company','ocr-contact','ocr-phone','ocr-fax','ocr-email','ocr-title','ocr-address'].forEach(id=>{document.getElementById(id).value='';});}
+
+// CSVエクスポート
+function exportCSV(){
+  const headers=['顧客名','担当者','製品','ステージ','種別','販売チャネル','MRR','初期費用','予定車両数','対象製品','次回アクション','次回日','メモ','登録日'];
+  const rows=db.deals.map(d=>[d.customer,d.assignee,d.product,d.stage,d.type,d.salesChannel||'',d.mrr||0,d.initialCost||0,d.plannedVehicles||0,(d.targetProducts||[]).join('/'),d.nextAction||'',d.nextDate||'',d.notes||'',d.createdAt||''].map(v=>`"${String(v).replace(/"/g,'""')}"`));
+  const csv='\uFEFF'+[headers,...rows].map(r=>r.join(',')).join('\n');
+  const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`アネストCRM_商談データ_${today()}.csv`;a.click();
+}
+
+// 初期化
+document.addEventListener('DOMContentLoaded',async()=>{
+  document.getElementById('today-date').textContent=new Date().toLocaleDateString('ja-JP',{year:'numeric',month:'long',day:'numeric',weekday:'short'});
+  document.querySelectorAll('nav a[data-view]').forEach(a=>{a.addEventListener('click',e=>{e.preventDefault();navigate(a.dataset.view);});});
+  document.querySelectorAll('.modal-overlay').forEach(m=>{m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('active');});});
+  loadConfig();
+  if(!isConfigured()&&!DEMO_MODE){navigate('dashboard');openSettings();}
+  else{await loadDB();updateNotionStatus();navigate('dashboard');}
+});
+</script>
+</body>
+</html>
